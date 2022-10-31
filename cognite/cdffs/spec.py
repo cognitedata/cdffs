@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class CdfFileSystem(AbstractFileSystem):
     """File-system specification for CDF Files.
 
-    #TODO: write longer description
+    Longer class information... #TODO:
 
     Attributes:
         protocol (str): Protocol name.
@@ -98,11 +98,12 @@ class CdfFileSystem(AbstractFileSystem):
         """
         return [file_part for file_part in path.split("/") if Path(file_part).suffix]
 
-    def split_path(self, path: str) -> Tuple[str, str, str]:
+    def split_path(self, path: str, validate_suffix: bool = True) -> Tuple[str, str, str]:
         """Split the path and extract root_dir, external_id and a filename.
 
         Args:
             path (str): Path to split.
+            validate_suffix (bool): Flag to validate if the file name must have a valid suffix.
 
         Returns:
             List: Returns the list of parts with a valid file suffix.
@@ -120,12 +121,12 @@ class CdfFileSystem(AbstractFileSystem):
             root_dir = path[: path.find(external_id_prefix)].strip("/")
             external_id = path[path.find(external_id_prefix) :]
 
-        elif len(Path(path).parts):  # TODO:
+        elif len(Path(path).parts) and not validate_suffix:  # TODO:
             external_id_prefix = ""
             root_dir = path.strip("/")
             external_id = ""
         else:
-            raise ValueError("Path provided is not valid.")
+            raise ValueError("Path provided is not valid or the file name doesn't have a valid suffix")
 
         return "/" + root_dir, external_id_prefix, external_id
 
@@ -141,7 +142,7 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             FileNotFoundError: An error occurred when extracting file metadata.
         """
-        root_dir, external_id_prefix, _ = self.split_path(path)
+        root_dir, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
         list_query = {
             x[0]: x[1]
             for x in zip(("directory_prefix", "external_id_prefix"), (root_dir, external_id_prefix))
@@ -156,7 +157,7 @@ class CdfFileSystem(AbstractFileSystem):
                 file_meta = {
                     "type": "file",
                     "name": str(inp_path).lstrip("/"),
-                    "size": file_met.metadata.get("size", -1) if file_met.metadata else -1,
+                    "size": int(file_met.metadata.get("size", -1)) if file_met.metadata else -1,
                 }
 
                 parent_path = str(inp_path.parent).lstrip("/")
@@ -313,11 +314,6 @@ class CdfFileSystem(AbstractFileSystem):
         root_dir, _, external_id = self.split_path(path)
         return CdfFile(self, self.cognite_client, path, root_dir, external_id, mode=mode, block_size=block_size)
 
-    # def __contains__(self, key):
-    #     key = self._normalize_key(key)
-    #     file_path = os.path.join(self.path, key)
-    #     return False
-
     def cat_file(self, external_id: str) -> Any:
         """Open and read the contents of a file.
 
@@ -368,7 +364,7 @@ class CdfFileSystem(AbstractFileSystem):
 class CdfFile(AbstractBufferedFile):
     """CDF File interface to read/write the files.
 
-    #TODO: write longer description
+    Longer class information... #TODO:
 
     Attributes:
         DEFAULT_BLOCK_SIZE (int): Block size to read and write the data.
@@ -377,7 +373,7 @@ class CdfFile(AbstractBufferedFile):
         external_id (str): External Id for the file.
     """
 
-    DEFAULT_BLOCK_SIZE: int = 5 * 2**20
+    DEFAULT_BLOCK_SIZE = 5 * 2**20
 
     def __init__(
         self,
@@ -421,7 +417,7 @@ class CdfFile(AbstractBufferedFile):
         self.root_dir: str = directory
         self.external_id: str = external_id
 
-    def _upload_chunk(self) -> None:
+    def _upload_chunk(self, final: bool = False) -> None:
         """Upload file contents to CDF.
 
         Args:
