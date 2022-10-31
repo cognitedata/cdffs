@@ -207,17 +207,31 @@ def test_split_path_with_directory_extended(fs, test_input, expected_result):
 
 
 @pytest.mark.parametrize(
-    "test_input,expected_result",
+    "validate_suffix, test_input,expected_result",
     [
-        ("/sample_data", ("/sample_data", "", "")),
-        ("/sample_data/test/", ("/sample_data/test", "", "")),
-        ("/sample_data/test/out/21", ("/sample_data/test/out/21", "", "")),
+        (False, "/sample_data", ("/sample_data", "", "")),
+        (False, "/sample_data/test/", ("/sample_data/test", "", "")),
+        (False, "/sample_data/test/out/21", ("/sample_data/test/out/21", "", "")),
     ],
 )
-def test_split_path_exception(fs, test_input, expected_result):
+def test_split_path_validate_suffix(fs, validate_suffix, test_input, expected_result):
     fs.metadata = {}
-    result_data = fs.split_path(test_input)
+    result_data = fs.split_path(test_input, validate_suffix=validate_suffix)
     assert expected_result == result_data
+
+
+@pytest.mark.parametrize(
+    "test_input",
+    [
+        ("/sample_data"),
+        ("/sample_data/test/"),
+        ("/sample_data/test/out/21"),
+    ],
+)
+def test_split_path_exception(fs, test_input):
+    fs.metadata = {}
+    with pytest.raises(ValueError):
+        fs.split_path(test_input)
 
 
 @pytest.mark.parametrize(
