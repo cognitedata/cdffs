@@ -1,0 +1,41 @@
+name: ci
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  run_linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip poetry==1.2.2
+          poetry install
+
+      - name: Linting
+        run: |
+          pre-commit run --all-files
+
+  run_testing:
+    runs-on: ubuntu-latest
+    needs: run_linting
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip poetry==1.2.2
+          poetry install
+
+      - name: Run tests
+        env:
+          environment: main
+        run: pytest tests/
