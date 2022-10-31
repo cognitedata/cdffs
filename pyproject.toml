@@ -24,6 +24,8 @@ multi_line_output=3            # corresponds to -m  flag
 include_trailing_comma=true    # corresponds to -tc flag
 skip_glob = '^((?!py$).)*$'    # this makes sort all Python files
 known_third_party = []
+profile = "black"
+
 [tool.tox]
 legacy_tox_ini = """
 [tox]
@@ -42,13 +44,13 @@ commands =
 
 [tool.poetry.dependencies]
 python = "^3.8"
+responses = "^0.22.0"
+cognite-sdk = "^4.11.0"
+fsspec = "^2022.10.0"
+pytest = "^7.2.0"
 
 [tool.poetry.dev-dependencies]
 
-
-[[tool.poetry.source]]
-name = "snakepit"
-url = "https://cognite.jfrog.io/cognite/api/pypi/snakepit/simple"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
