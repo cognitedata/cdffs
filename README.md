@@ -5,9 +5,9 @@ Intention of this project is to allow users to work with CDF Files using the pop
 
 ## How to use:
 
-When working with `xarray` or `pandas`
+Three important steps to remember when working with `xarray` or `pandas`. 
 
-* Import the cdffs
+* Import the `cdffs` package
 
 ```python
 from cognite import cdffs
@@ -27,19 +27,21 @@ client_cnf = ClientConfig(
 
 * Pass the client config as `connection_config` in `storage_options` when read/writing the data.
 
+Read data using `xarray`.
+
 ```python
 ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf})
 ```
 
-or
+Write data using `xarray`.
 
 ```python
-df = pd.read_csv("cdffs://pandas_test/out/pandas_df.csv", storage_options={"connection_config": client_cnf})
+ds1.to_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "metadata": metadata})
 ```
 
 ## Sample Scripts
 
-### Sample script to work CDF files using `xarray`.
+### Sample script to work with CDF files using `xarray`.
 
 ```python
 import os
@@ -82,7 +84,7 @@ ds1.to_zarr("cdffs://sample35/test.zarr", storage_options={"connection_config": 
 ds2 = xarray.open_zarr("cdffs://sample35/test.zarr", storage_options={"connection_config": client_cnf})
 ```
 
-### Sample script to work CDF files using `pandas`.
+### Sample script to work with CDF files using `pandas`.
 
 ```python
 import os
