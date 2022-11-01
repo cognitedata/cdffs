@@ -1,3 +1,4 @@
+"""CDF File System Specification."""
 import logging
 import time
 from pathlib import Path
@@ -33,7 +34,7 @@ class CdfFileSystem(AbstractFileSystem):
     protocol: str = "cdffs"
 
     def __init__(self, **kwargs: Optional[Any]) -> None:
-        """Initializes the CdfFileSystem and creates a connection to CDF.
+        """Initialize the CdfFileSystem and creates a connection to CDF.
 
         Creates a cognite client by extracting the connection_config from the keyword arguments.
         Connection config must be provided by the user when working with any CDF files. Refer:
@@ -58,7 +59,7 @@ class CdfFileSystem(AbstractFileSystem):
 
     @classmethod
     def _strip_protocol(cls, path: str) -> str:
-        """Remove the protocol from the input path
+        """Remove the protocol from the input path.
 
         Args:
             path (str): Path to remove the protocol from
@@ -84,9 +85,9 @@ class CdfFileSystem(AbstractFileSystem):
             else:
                 raise ValueError("User must provide a `connection_config` in storage_options")
 
-        except (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError) as e:
-            logger.error(f"Connection error occurred: {str(e)}")
-            raise ValueError("Unable to connect to CDF")
+        except (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError) as cognite_exp:
+            logger.error("Connection error occurred: %s", str(cognite_exp))
+            raise ValueError("Unable to connect to CDF") from cognite_exp
 
     def _suffix_exists(self, path: str) -> List:
         """Parse the path and verify if the path contains a valid file suffix.
@@ -122,7 +123,7 @@ class CdfFileSystem(AbstractFileSystem):
             root_dir = path[: path.find(external_id_prefix)].strip("/")
             external_id = path[path.find(external_id_prefix) :]
 
-        elif len(Path(path).parts) and not validate_suffix:  # TODO:
+        elif Path(path).parts and not validate_suffix:  # TODO:
             external_id_prefix = ""
             root_dir = path.strip("/")
             external_id = ""
@@ -151,7 +152,7 @@ class CdfFileSystem(AbstractFileSystem):
         }
 
         try:
-            directories = {}
+            directories: Dict[str, Dict[str, Any]] = {}
             self.dircache[path] = [{"type": "directory", "name": path.lstrip("/")}]
             for file_met in self.cognite_client.files.list(**list_query, limit=-1):
                 inp_path = Path(file_met.directory, file_met.external_id)
@@ -171,16 +172,16 @@ class CdfFileSystem(AbstractFileSystem):
                 else:
                     self.dircache[parent_path].append(file_meta)
 
-            for dir in directories:
-                parent_path = str(Path(dir).parent)
+            for dir_name in directories.keys():
+                parent_path = str(Path(dir_name).parent)
                 if parent_path not in self.dircache:
                     self.dircache[parent_path] = []
-                    self.dircache[parent_path].append(directories[dir])
+                    self.dircache[parent_path].append(directories[dir_name])
                 else:
-                    self.dircache[parent_path].append(directories[dir])
+                    self.dircache[parent_path].append(directories[dir_name])
 
-        except CogniteAPIError:
-            raise FileNotFoundError  # TODO: Analyze the consequences of raising a FileNotFoundError
+        except CogniteAPIError as cognite_exp:
+            raise FileNotFoundError from cognite_exp  # TODO: Analyze the consequences of raising a FileNotFoundError
 
     def ls(
         self, path: str, detail: bool = False, invalidate_cache: bool = False, **kwargs: Optional[Any]
@@ -205,10 +206,8 @@ class CdfFileSystem(AbstractFileSystem):
         file_list = self.dircache.get(path, [])
         if not file_list:
             raise FileNotFoundError
-        if detail:
-            return self.dircache[path]
-        else:
-            return [x["name"] for x in self.dircache[path]]
+
+        return self.dircache[path] if detail else [x["name"] for x in self.dircache[path]]
 
     def makedirs(self, path: str, exist_ok: bool = True) -> None:
         """Create a directory at a path given.
@@ -240,24 +239,27 @@ class CdfFileSystem(AbstractFileSystem):
         """
         self.makedirs(path, exist_ok=bool(kwargs.get("exist_ok")))
 
-    def makedir(self, path: str, exist_ok: bool = False) -> None:
+    def makedir(self, path: str, create_parents: bool = False, **kwargs: Optional[Any]) -> None:
         """Create a directory at a path given.
 
         Args:
             path (str): Path to use to create a directory.
-            exist_ok (bool): Flag to specify if error can be ignored when directory already exists.
+            create_parents (bool): Flag to specify if parents needs to be created.
+            **kwargs (Optional[Any]): Set of keyword arguments to support additional options
+            to make directory.
 
         Returns:
             None.
         """
-        self.makedirs(path, exist_ok=exist_ok)
+        self.makedirs(path)
 
-    def rm(self, path: str, recursive: bool = False) -> None:
+    def rm(self, path: str, recursive: bool = False, maxdepth: Union[int, None] = None) -> None:
         """Remove the files and directories at a path given.
 
         Args:
             path (str): Path to use to remove the files and directories.
             recursive (bool): Flag to recursively delete a directory.
+            maxdepth (Union[int, None]): Maximum depth to traverse and delete if recursive option is used.
 
         Returns:
             None.
@@ -267,7 +269,14 @@ class CdfFileSystem(AbstractFileSystem):
         """
         raise NotImplementedError
 
-    def mv(self, source_path: str, destination_path: str, recursive: bool = False, maxdepth: int = None) -> None:
+    def mv(
+        self,
+        source_path: str,
+        destination_path: str,
+        recursive: bool = False,
+        maxdepth: int = None,
+        **kwargs: Optional[Any],
+    ) -> None:
         """Move the files and directories at a path given to a new path.
 
         Args:
@@ -275,6 +284,8 @@ class CdfFileSystem(AbstractFileSystem):
             destination_path (str): Path to use as destination.
             recursive (bool): Flag to recursively move the files and directories.
             maxdepth (int): Maximum depth to use when moving the files and directories.
+            **kwargs (Optional[Any]): Set of keyword arguments to support additional options
+            to move directory.
 
         Returns:
             None.
@@ -299,7 +310,14 @@ class CdfFileSystem(AbstractFileSystem):
         """
         raise NotImplementedError
 
-    def open(self, path: str, mode: str = "rb", block_size: str = "default", **kwargs: Optional[Any]) -> "CdfFile":
+    def open(
+        self,
+        path: str,
+        mode: str = "rb",
+        block_size: str = "default",
+        cache_options: Optional[Dict[Any, Any]] = None,
+        **kwargs: Optional[Any],
+    ) -> "CdfFile":
         """Open the file for reading and writing.
 
         Args:
@@ -313,9 +331,18 @@ class CdfFileSystem(AbstractFileSystem):
             CdfFile: CdfFile to allow reading/writing files to Cdf.
         """
         root_dir, _, external_id = self.split_path(path)
-        return CdfFile(self, self.cognite_client, path, root_dir, external_id, mode=mode, block_size=block_size)
+        return CdfFile(
+            self,
+            self.cognite_client,
+            path,
+            root_dir,
+            external_id,
+            mode=mode,
+            block_size=block_size,
+            cache_options=cache_options,
+        )
 
-    def cat_file(self, external_id: str) -> Any:
+    def read_file(self, external_id: str) -> Any:
         """Open and read the contents of a file.
 
         Args:
@@ -340,9 +367,11 @@ class CdfFileSystem(AbstractFileSystem):
                     _retry_wait_seconds *= 2
                     continue
 
-                raise FileNotFoundError
+                raise FileNotFoundError from cognite_exp
 
-    def cat(self, path: Union[str, list], **kwargs: Optional[Any]) -> Union[bytes, Any, Dict[str, bytes]]:
+    def cat(
+        self, path: Union[str, list], recursive: bool = False, on_error: str = "raise", **kwargs: Optional[Any]
+    ) -> Union[bytes, Any, Dict[str, bytes]]:
         """Open and read the contents of a file(s).
 
         Args:
@@ -365,11 +394,11 @@ class CdfFileSystem(AbstractFileSystem):
             out_data = {}
             for inp_path in path:
                 external_id = self.split_path(inp_path)[2]
-                out_data[inp_path] = self.cat_file(external_id)
+                out_data[inp_path] = self.read_file(external_id)
             return out_data
         else:
             external_id = self.split_path(path)[2]
-            return self.cat_file(external_id)
+            return self.read_file(external_id)
 
 
 class CdfFile(AbstractBufferedFile):
@@ -384,8 +413,6 @@ class CdfFile(AbstractBufferedFile):
         external_id (str): External Id for the file.
     """
 
-    DEFAULT_BLOCK_SIZE = 5 * 2**20
-
     def __init__(
         self,
         fs: CdfFileSystem,
@@ -395,12 +422,10 @@ class CdfFile(AbstractBufferedFile):
         external_id: str,
         mode: str = "rb",
         block_size: str = "default",
-        autocommit: bool = True,
-        cache_type: str = "bytes",
-        cache_options: Dict[Any, Any] = {},
+        cache_options: Optional[Dict[Any, Any]] = {},
         **kwargs: Optional[Any],
     ) -> None:
-        """Initializes the CdfFile and initializes a connection to CDF.
+        """Initialize the CdfFile and initializes a connection to CDF.
 
         Args:
             fs (CdfFileSystem): CdfFileSystem.
@@ -410,7 +435,6 @@ class CdfFile(AbstractBufferedFile):
             external_id (str): External Id for the file.
             mode (str): mode to work with the file.
             block_size (str): Block size to read/write the file.
-            autocommit (str): Flag to indicate whether to write to CDF.
             cache_type (str): Caching policy for the file.
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
@@ -422,9 +446,7 @@ class CdfFile(AbstractBufferedFile):
             fs,
             path,
             mode=mode,
-            block_size=self.DEFAULT_BLOCK_SIZE,
-            autocommit=autocommit,
-            cache_type=cache_type,
+            block_size=block_size,
             cache_options=cache_options,
             **kwargs,
         )
@@ -454,8 +476,8 @@ class CdfFile(AbstractBufferedFile):
                 metadata={"size": self.buffer.getbuffer().nbytes},
                 overwrite=True,
             )
-        except CogniteAPIError:
-            raise RuntimeError  # TODO: Raise appropriate exception/ Handle clean up
+        except CogniteAPIError as cognite_exp:
+            raise RuntimeError from cognite_exp  # TODO: Raise appropriate exception/ Handle clean up
 
     def read(self, length: int = -1) -> Any:
         """Read file contents from CDF.
@@ -466,7 +488,7 @@ class CdfFile(AbstractBufferedFile):
         Returns:
             None.
         """
-        inp_data = self.fs.cat_file(self.external_id)
+        inp_data = self.fs.read_file(self.external_id)
         self.size = len(inp_data)
         self.cache = AllBytes(size=len(inp_data), fetcher=None, blocksize=None, data=inp_data)
         return super().read(length)
