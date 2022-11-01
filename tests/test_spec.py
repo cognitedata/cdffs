@@ -286,6 +286,43 @@ def test_split_path_exception(fs, test_input):
 def test_ls(fs, detail_flag, test_input, expected_result, mock_files_response):
     fs.metadata = {}
     result_data = fs.ls(test_input, detail=detail_flag)
-    print(expected_result)
-    print(result_data)
     assert expected_result == result_data
+
+
+@pytest.mark.parametrize(
+    "test_input, expected_result",
+    [
+        (
+            "sample_data/out/",
+            ([{"type": "directory", "name": "sample_data/out/"}]),
+        ),
+    ],
+)
+def test_makedirs(fs, test_input, expected_result):
+    fs.metadata = {}
+    fs.makedirs(test_input)
+    assert fs.dircache[test_input] == expected_result
+
+    # It should ignore the new directory.
+    fs.makedirs(test_input)
+    assert fs.dircache[test_input] == expected_result
+
+
+@pytest.mark.parametrize(
+    "exist_ok_flag, test_input, expected_result",
+    [
+        (
+            False,
+            "sample_data/test_output/",
+            ([{"type": "directory", "name": "sample_data/test_output/"}]),
+        ),
+    ],
+)
+def test_makedirs_exception(fs, exist_ok_flag, test_input, expected_result):
+    fs.metadata = {}
+    fs.makedirs(test_input, exist_ok=exist_ok_flag)
+    assert fs.dircache[test_input] == expected_result
+
+    # It should raise an exception as the new directory already exists.
+    with pytest.raises(FileExistsError):
+        fs.makedirs(test_input, exist_ok=exist_ok_flag)
