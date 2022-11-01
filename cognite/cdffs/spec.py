@@ -1,4 +1,5 @@
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -326,10 +327,20 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             FileNotFoundError: When there is no file matching the external_id given.
         """
-        try:
-            return self.cognite_client.files.download_bytes(external_id=external_id)
-        except CogniteAPIError:
-            raise FileNotFoundError
+        _download_retries = 0
+        _retry_wait_seconds = 0.5
+        _download_max_retries = 3
+        while True:
+            try:
+                return self.cognite_client.files.download_bytes(external_id=external_id)
+            except CogniteAPIError as cognite_exp:
+                if cognite_exp.message.startswith("Files not uploaded") and _download_retries < _download_max_retries:
+                    _download_retries += 1
+                    time.sleep(_retry_wait_seconds)
+                    _retry_wait_seconds *= 2
+                    continue
+
+                raise FileNotFoundError
 
     def cat(self, path: Union[str, list], **kwargs: Optional[Any]) -> Union[bytes, Any, Dict[str, bytes]]:
         """Open and read the contents of a file(s).
@@ -384,6 +395,7 @@ class CdfFile(AbstractBufferedFile):
         external_id: str,
         mode: str = "rb",
         block_size: str = "default",
+        autocommit: bool = True,
         cache_type: str = "bytes",
         cache_options: Dict[Any, Any] = {},
         **kwargs: Optional[Any],
@@ -398,6 +410,7 @@ class CdfFile(AbstractBufferedFile):
             external_id (str): External Id for the file.
             mode (str): mode to work with the file.
             block_size (str): Block size to read/write the file.
+            autocommit (str): Flag to indicate whether to write to CDF.
             cache_type (str): Caching policy for the file.
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
@@ -410,7 +423,9 @@ class CdfFile(AbstractBufferedFile):
             path,
             mode=mode,
             block_size=self.DEFAULT_BLOCK_SIZE,
-            autocommit=True,
+            autocommit=autocommit,
+            cache_type=cache_type,
+            cache_options=cache_options,
             **kwargs,
         )
         self.cognite_client: CogniteClient = coginte_client
@@ -421,7 +436,7 @@ class CdfFile(AbstractBufferedFile):
         """Upload file contents to CDF.
 
         Args:
-            None
+            final (bool): Flag to indicate if this the last block.
 
         Returns:
             None.
@@ -440,7 +455,7 @@ class CdfFile(AbstractBufferedFile):
                 overwrite=True,
             )
         except CogniteAPIError:
-            raise RuntimeError  # TODO: Raise appropriate exception
+            raise RuntimeError  # TODO: Raise appropriate exception/ Handle clean up
 
     def read(self, length: int = -1) -> Any:
         """Read file contents from CDF.
