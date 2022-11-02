@@ -33,7 +33,7 @@ envlist = py38
 
 [tool.pydocstyle]
 convention = "google"
-match_dir = 'cognite'
+match_dir = "(^cognite).*"
 
 [tox]
 isolated_build = true
