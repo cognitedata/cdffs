@@ -28,4 +28,4 @@ repos:
     rev: 6.1.1
     hooks:
       - id: pydocstyle
-        args: ["--source", "cognite/", "--convention", "google"]
+        additional_dependencies: ["toml"]
