@@ -29,3 +29,4 @@ repos:
     hooks:
       - id: pydocstyle
         additional_dependencies: ["toml"]
+        files: "(^cognite).*"
