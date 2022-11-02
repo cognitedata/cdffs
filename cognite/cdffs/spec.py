@@ -1,4 +1,4 @@
-"""CDF File System Specification."""
+"""File-system specification for CDF Files."""
 import logging
 import time
 from pathlib import Path
@@ -17,7 +17,7 @@ from fsspec.spec import AbstractBufferedFile
 
 logger = logging.getLogger(__name__)
 
-# TODO: Update All doc strings
+# TODO: Update doc strings
 
 
 class CdfFileSystem(AbstractFileSystem):
@@ -26,9 +26,9 @@ class CdfFileSystem(AbstractFileSystem):
     Longer class information... #TODO:
 
     Attributes:
-        protocol (str): Protocol name.
+        protocol (str): (class attribute) Protocol name to use when interacting with CDF Files.
         connection_config (ClientConfig): Cognite client connection configurations.
-        metadata (Dict): File Metadata that user can send when uploading new files to CDF.
+        metadata (Dict): File Metadata that user can send when reading/writing the new files to CDF.
     """
 
     protocol: str = "cdffs"
@@ -62,7 +62,7 @@ class CdfFileSystem(AbstractFileSystem):
         """Remove the protocol from the input path.
 
         Args:
-            path (str): Path to remove the protocol from
+            path (str): Path to use to extract the protocol.
 
         Returns:
             str: Returns a path without the protocol
@@ -132,6 +132,17 @@ class CdfFileSystem(AbstractFileSystem):
 
         return "/" + root_dir, external_id_prefix, external_id
 
+    def cache_path(self, root_dir: str, external_id: str, file_size: int) -> None:
+        """Cache the file path."""
+        inp_path = Path(root_dir, external_id)
+        file_meta = {"type": "file", "name": str(inp_path).lstrip("/"), "size": file_size}
+        parent_path = str(inp_path.parent).lstrip("/")
+        if parent_path not in self.dircache:
+            self.dircache[parent_path] = []
+            self.dircache[parent_path].append(file_meta)
+        else:
+            self.dircache[parent_path].append(file_meta)
+
     def _ls(self, path: str) -> None:
         """List the files based on the directory & external Id prefixes extracted from path.
 
@@ -142,7 +153,7 @@ class CdfFileSystem(AbstractFileSystem):
             None.
 
         Raises:
-            FileNotFoundError: An error occurred when extracting file metadata.
+            FileNotFoundError: An error occurred when extracting a file metadata.
         """
         root_dir, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
         list_query = {
@@ -232,7 +243,9 @@ class CdfFileSystem(AbstractFileSystem):
 
         Args:
             path (str): Path to use to create a directory.
-            create_parents (bool): Flag to specify if parents needs to be created. #TODO: Analyze implement
+            create_parents (bool): Flag to specify if parents needs to be created. #TODO: Analyze & implement
+            **kwargs (Optional[Any]): Set of keyword arguments to support additional options
+            to create a directory.
 
         Returns:
             None.
@@ -246,7 +259,7 @@ class CdfFileSystem(AbstractFileSystem):
             path (str): Path to use to create a directory.
             create_parents (bool): Flag to specify if parents needs to be created.
             **kwargs (Optional[Any]): Set of keyword arguments to support additional options
-            to make directory.
+            to create a directory.
 
         Returns:
             None.
@@ -280,7 +293,7 @@ class CdfFileSystem(AbstractFileSystem):
         """Move the files and directories at a path given to a new path.
 
         Args:
-            source_path (str): Path to use to move the files and directories.
+            source_path (str): Path to use as source to move the files and directories.
             destination_path (str): Path to use as destination.
             recursive (bool): Flag to recursively move the files and directories.
             maxdepth (int): Maximum depth to use when moving the files and directories.
@@ -299,7 +312,7 @@ class CdfFileSystem(AbstractFileSystem):
         """Change the directory to a path given.
 
         Args:
-            path (str): Path to use to move the files and directories.
+            path (str): Path to use to change directory.
             **kwargs (Optional[Any]): Set of keyword arguments to perform change directory.
 
         Returns:
@@ -324,11 +337,12 @@ class CdfFileSystem(AbstractFileSystem):
             path (str): File name with absolute path to open.
             mode (str): Mode to use when opening a file.
             block_size (str): Block size to use when opening a file.
+            cache_options: (Optional[Dict[Any, Any]]): Additional user defined options to work with caching.
             **kwargs (Optional[Any]): Set of keyword arguments to allow additional options
             when opening a file.
 
         Returns:
-            CdfFile: CdfFile to allow reading/writing files to Cdf.
+            CdfFile: An instance of a 'CdfFile' to allow reading/writing file to Cdf.
         """
         root_dir, _, external_id = self.split_path(path)
         return CdfFile(
@@ -340,6 +354,7 @@ class CdfFileSystem(AbstractFileSystem):
             mode=mode,
             block_size=block_size,
             cache_options=cache_options,
+            **kwargs,
         )
 
     def read_file(self, external_id: str) -> Any:
@@ -349,7 +364,7 @@ class CdfFileSystem(AbstractFileSystem):
             external_id (str): External Id of the file to fetch the contents.
 
         Returns:
-            bytes: File contents as such from
+            bytes: File contents as is from the blob storage.
 
         Raises:
             FileNotFoundError: When there is no file matching the external_id given.
@@ -376,7 +391,9 @@ class CdfFileSystem(AbstractFileSystem):
 
         Args:
             path (str): Path to use to extract the read the contents of file(s) from Cdf.
-            **kwargs (Optional[Any]): Set of keyword arguments to reading the file contents.
+            recursive (bool): Flag to recursively read multiple files.
+            on_error (str): Flag to indicate how to handle file read exceptions. #TODO:
+            **kwargs (Optional[Any]): Set of keyword arguments to read the file contents.
 
         Returns:
             bytes: File contents for the file name given.
@@ -387,7 +404,7 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             ValueError: When the path is empty.
         """
-        if path:
+        if not path:
             ValueError("Path cannot be empty")
 
         if isinstance(path, list):
@@ -407,8 +424,7 @@ class CdfFile(AbstractBufferedFile):
     Longer class information... #TODO:
 
     Attributes:
-        DEFAULT_BLOCK_SIZE (int): Block size to read and write the data.
-        cognite_client (ClientClient): Cognite client.
+        cognite_client (ClientClient): Cognite client to work with Cdf.
         root_dir (str): Root directory for the file.
         external_id (str): External Id for the file.
     """
@@ -425,17 +441,16 @@ class CdfFile(AbstractBufferedFile):
         cache_options: Optional[Dict[Any, Any]] = {},
         **kwargs: Optional[Any],
     ) -> None:
-        """Initialize the CdfFile and initializes a connection to CDF.
+        """Initialize the CdfFile.
 
         Args:
-            fs (CdfFileSystem): CdfFileSystem.
-            coginte_client (CogniteClient): Cognite Client.
+            fs (CdfFileSystem): An instance of a CdfFileSystem.
+            coginte_client (CogniteClient): Cognite client to work with Cdf.
             path (str): Absolute path for the file.
             directory (str): Root directory for the file.
             external_id (str): External Id for the file.
-            mode (str): mode to work with the file.
+            mode (str): Mode to work with the file.
             block_size (str): Block size to read/write the file.
-            cache_type (str): Caching policy for the file.
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
 
@@ -458,7 +473,7 @@ class CdfFile(AbstractBufferedFile):
         """Upload file contents to CDF.
 
         Args:
-            final (bool): Flag to indicate if this the last block.
+            final (bool): Flag to indicate if this the last block. #TODO:
 
         Returns:
             None.
@@ -467,15 +482,22 @@ class CdfFile(AbstractBufferedFile):
             RuntimeError: When an unexpected error occurred.
         """
         try:
+            metadata = {"size": self.buffer.getbuffer().nbytes}
             self.cognite_client.files.upload_bytes(
                 content=self.buffer.getbuffer(),
                 name=Path(self.external_id).name,
                 external_id=self.external_id,
                 directory=self.root_dir,
                 source=self.fs.metadata.get("source"),
-                metadata={"size": self.buffer.getbuffer().nbytes},
+                mime_type=self.fs.metadata.get("mime_type"),
+                data_set_id=self.fs.metadata.get("data_set_id"),
+                geo_location=self.fs.metadata.get("geo_location"),
+                metadata=metadata,
                 overwrite=True,
             )
+
+            self.fs.cache_path(self.root_dir, self.external_id, metadata["size"])
+
         except CogniteAPIError as cognite_exp:
             raise RuntimeError from cognite_exp  # TODO: Raise appropriate exception/ Handle clean up
 
