@@ -31,10 +31,6 @@ legacy_tox_ini = """
 isolated_build = true
 envlist = py38
 
-[tool.pydocstyle]
-convention = "google"
-match_dir = "(^cognite).*"
-
 [tox]
 isolated_build = true
 envlist = py38
