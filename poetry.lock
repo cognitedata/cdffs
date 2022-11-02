@@ -527,7 +527,7 @@ testing = ["coverage (>=6.2)", "coverage-enable-subprocess (>=1)", "flaky (>=3.7
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "81ed28ce02dd18579481f563155a109fe549be6b29baa76a64d3fe6110de7ed0"
+content-hash = "579fff0775ab29446364115a0021b183f61e5eb1cb414b66a572077487740e9b"
 
 [metadata.files]
 attrs = [
