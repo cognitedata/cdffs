@@ -28,5 +28,4 @@ repos:
     rev: 6.1.1
     hooks:
       - id: pydocstyle
-        language: python
-        convention: google
+        args: ["--source", "cognite/", "--convention", "google"]

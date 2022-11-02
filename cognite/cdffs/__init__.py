@@ -1,3 +1,4 @@
+"""Initialize the cdffs package."""
 import fsspec
 
 from .spec import CdfFileSystem
