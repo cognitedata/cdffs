@@ -30,3 +30,6 @@ repos:
       - id: pydocstyle
         additional_dependencies: ["toml"]
         files: "(^cognite).*"
+        args:
+          - --convention
+          - google
