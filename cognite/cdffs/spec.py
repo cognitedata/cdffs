@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from cognite.client import ClientConfig, CogniteClient
+from cognite.client.data_classes.files import FileMetadata
 from cognite.client.exceptions import (
     CogniteAPIError,
     CogniteAuthError,
@@ -16,31 +17,41 @@ from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 
 logger = logging.getLogger(__name__)
-
-# TODO: Update doc strings
+_COMMON_EXCEPTIONS = (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError)
 
 
 class CdfFileSystem(AbstractFileSystem):
-    """File-system specification for CDF Files.
+    """File-system interface to work with the files that are stored in CDF.
 
-    Longer class information... #TODO:
+    Provides an interface to the files that are stored in CDF. Only a handful of methods that are required to support
+    the popular python packages are implemented.
 
     Attributes:
         protocol (str): (class attribute) Protocol name to use when interacting with CDF Files.
-        connection_config (ClientConfig): Cognite client connection configurations.
-        metadata (Dict): File Metadata that user can send when reading/writing the new files to CDF.
+        cdf_list_cache (Dict): Cache the file list results from CDF.
+        cdf_list_expiry_time (int): Expiry time in seconds to invalidate the file list cache.
+        file_metadata (FileMetadata): File Metadata that a user can use when reading/writing the files to CDF.
     """
 
     protocol: str = "cdffs"
 
-    def __init__(self, **kwargs: Optional[Any]) -> None:
+    def __init__(
+        self,
+        connection_config: ClientConfig,
+        file_metadata: FileMetadata = FileMetadata(metadata={}),
+        **kwargs: Optional[Any],
+    ) -> None:
         """Initialize the CdfFileSystem and creates a connection to CDF.
 
-        Creates a cognite client by extracting the connection_config from the keyword arguments.
+        Creates a cognite client using the connection_config provided in storage_options.
         Connection config must be provided by the user when working with any CDF files. Refer:
         https://cognite-sdk-python.readthedocs-hosted.com/en/latest/cognite.html#cognite.client.config.ClientConfig
+        User can also provide FileMetadata in storage_options to add metadata to CDF files. Refer:
+        https://cognite-sdk-python.readthedocs-hosted.com/en/latest/cognite.html#id19
 
         Args:
+            connection_config (ClientConfig): Cognite client connection configurations.
+            file_metadata (FileMetadata): File Metadata that a user can use when reading/writing the files to CDF.
             **kwargs (Optional[Any]): Set of keyword arguments to create a CDF client connection and a file metadata
             information.
 
@@ -51,11 +62,15 @@ class CdfFileSystem(AbstractFileSystem):
             ValueError: An error occurred when creating connection to CDF.
         """
         super().__init__(**kwargs)
-        self.connection_config: ClientConfig = kwargs.get("connection_config")
-        self.metadata: Union[Any, Dict[Any, Any]] = kwargs.get("metadata", {})
+        if isinstance(file_metadata, FileMetadata):
+            self.file_metadata: FileMetadata = file_metadata
+        else:
+            raise ValueError("User must provide a valid `file_metadata` in storage_options")
+        self.cdf_list_cache: Dict[str, float] = {}
+        self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
 
         # Create a connection to Cdf
-        self.do_connect()
+        self.do_connect(connection_config)
 
     @classmethod
     def _strip_protocol(cls, path: str) -> str:
@@ -67,27 +82,22 @@ class CdfFileSystem(AbstractFileSystem):
         Returns:
             str: Returns a path without the protocol
         """
-        stripped_path = path.replace("cdffs://", "")
+        stripped_path = path.replace(f"{cls.protocol}://", "")
         return stripped_path
 
-    def do_connect(self) -> None:
+    def do_connect(self, connection_config: ClientConfig) -> None:
         """Connect to CDF using the connection configurations provided by the user.
 
         Args:
-            None.
+            connection_config (ClientConfig): Cognite client connection configurations.
 
         Raises:
-            ValueError: An error occurred when creating connection to CDF or a connection_config is missing.
+            ValueError: When an invalid connection_config is provided.
         """
-        try:
-            if self.connection_config is not None:
-                self.cognite_client = CogniteClient(self.connection_config)
-            else:
-                raise ValueError("User must provide a `connection_config` in storage_options")
-
-        except (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError) as cognite_exp:
-            logger.error("Connection error occurred: %s", str(cognite_exp))
-            raise ValueError("Unable to connect to CDF") from cognite_exp
+        if isinstance(connection_config, ClientConfig):
+            self.cognite_client = CogniteClient(connection_config)
+        else:
+            raise ValueError("User must provide a valid `connection_config` in storage_options")
 
     def _suffix_exists(self, path: str) -> List:
         """Parse the path and verify if the path contains a valid file suffix.
@@ -113,17 +123,17 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             ValueError: When an invalid input path is given.
         """
-        if "directory" in self.metadata:
-            root_dir = self.metadata.get("directory", "").strip("/")
+        if self.file_metadata.directory:
+            root_dir = self.file_metadata.directory.strip("/")
             external_id = path.replace(root_dir, "").lstrip("/")
             external_id_prefix = Path(external_id).parts[0]
 
-        elif self._suffix_exists(path):  # TODO: rewrite this further
+        elif self._suffix_exists(path):
             external_id_prefix = [x for x in Path(path).parts if Path(x).suffix][0]
             root_dir = path[: path.find(external_id_prefix)].strip("/")
             external_id = path[path.find(external_id_prefix) :]
 
-        elif Path(path).parts and not validate_suffix:  # TODO:
+        elif Path(path).parts and not validate_suffix:
             external_id_prefix = ""
             root_dir = path.strip("/")
             external_id = ""
@@ -133,21 +143,46 @@ class CdfFileSystem(AbstractFileSystem):
         return "/" + root_dir, external_id_prefix, external_id
 
     def cache_path(self, root_dir: str, external_id: str, file_size: int) -> None:
-        """Cache the file path."""
+        """Cache the file details in dircache to allow subsequent calls to make use of the file details.
+
+        Args:
+            root_dir (str): Root directory for the file.
+            external_id (str): External Id for the file.
+
+        Returns:
+            None.
+        """
         inp_path = Path(root_dir, external_id)
         file_meta = {"type": "file", "name": str(inp_path).lstrip("/"), "size": file_size}
         parent_path = str(inp_path.parent).lstrip("/")
         if parent_path not in self.dircache:
-            self.dircache[parent_path] = []
-            self.dircache[parent_path].append(file_meta)
+            self.dircache[parent_path] = [file_meta]
         else:
             self.dircache[parent_path].append(file_meta)
 
-    def _ls(self, path: str) -> None:
+    def _add_dirs_to_cache(self, directories: Dict[str, Dict[str, Any]]) -> None:
+        """Add all the directories extracted from file metadata to the dircache.
+
+        Args:
+            directories (Dict[str, Dict[str, Any]]): A dictionary with directory path as key and
+            list of all it's child directories as its value.
+
+        Returns:
+            None.
+        """
+        for dir_name, dir_val in directories.items():
+            parent_path = str(Path(dir_name).parent)
+            if parent_path not in self.dircache:
+                self.dircache[parent_path] = [dir_val]
+            else:
+                self.dircache[parent_path].append(dir_val)
+
+    def _ls(self, root_dir: str, external_id_prefix: str) -> None:
         """List the files based on the directory & external Id prefixes extracted from path.
 
         Args:
-            path (str): Path to use to extract the list of files from Cdf.
+            root_dir (str): Root directory for the file.
+            external_id (str): External Id for the file.
 
         Returns:
             None.
@@ -155,54 +190,48 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             FileNotFoundError: An error occurred when extracting a file metadata.
         """
-        root_dir, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
-        list_query = {
-            x[0]: x[1]
-            for x in zip(("directory_prefix", "external_id_prefix"), (root_dir, external_id_prefix))
-            if x[1] != "/"
-        }
-
         try:
             directories: Dict[str, Dict[str, Any]] = {}
-            self.dircache[path] = [{"type": "directory", "name": path.lstrip("/")}]
+            inp_key = str(Path(root_dir, external_id_prefix)).lstrip("/")
+            list_query = {
+                x[0]: x[1]
+                for x in zip(("directory_prefix", "external_id_prefix"), (root_dir, external_id_prefix))
+                if x[1] != "/"
+            }
+
+            # Get all the files that were previously cached when writing. (if applicable)
+            _file_write_cache = {d_info["name"]: True for d_path in self.dircache for d_info in self.dircache[d_path]}
+
             for file_met in self.cognite_client.files.list(**list_query, limit=-1):
                 inp_path = Path(file_met.directory, file_met.external_id)
-                file_meta = {
-                    "type": "file",
-                    "name": str(inp_path).lstrip("/"),
-                    "size": int(file_met.metadata.get("size", -1)) if file_met.metadata else -1,
-                }
+                file_name = str(inp_path).lstrip("/")
+                file_size = int(file_met.metadata.get("size", -1)) if file_met.metadata else -1
+                file_meta = {"type": "file", "name": file_name, "size": file_size}
 
+                # Add directory information.
                 parent_path = str(inp_path.parent).lstrip("/")
                 if parent_path not in directories:
                     directories[parent_path] = {"type": "directory", "name": parent_path.lstrip("/")}
 
-                if parent_path not in self.dircache:
-                    self.dircache[parent_path] = []
-                    self.dircache[parent_path].append(file_meta)
-                else:
-                    self.dircache[parent_path].append(file_meta)
+                if file_name not in _file_write_cache:
+                    if parent_path not in self.dircache:
+                        self.dircache[parent_path] = [file_meta]
+                    else:
+                        self.dircache[parent_path].append(file_meta)
 
-            for dir_name in directories.keys():
-                parent_path = str(Path(dir_name).parent)
-                if parent_path not in self.dircache:
-                    self.dircache[parent_path] = []
-                    self.dircache[parent_path].append(directories[dir_name])
-                else:
-                    self.dircache[parent_path].append(directories[dir_name])
+            self._add_dirs_to_cache(directories)
 
-        except CogniteAPIError as cognite_exp:
-            raise FileNotFoundError from cognite_exp  # TODO: Analyze the consequences of raising a FileNotFoundError
+            self.cdf_list_cache[inp_key] = time.time()
 
-    def ls(
-        self, path: str, detail: bool = False, invalidate_cache: bool = False, **kwargs: Optional[Any]
-    ) -> Union[Any, List[str]]:
+        except _COMMON_EXCEPTIONS as cognite_exp:
+            raise FileNotFoundError from cognite_exp
+
+    def ls(self, path: str, detail: bool = False, **kwargs: Optional[Any]) -> Union[Any, List[str]]:
         """List the files based on the directory & external Id prefixes extracted from path.
 
         Args:
             path (str): Path to use to extract the list of files from Cdf.
             detail (bool): Flag to specify if detail list is expected.
-            invalidate_cache (bool): Invalidate cache and extract the data from API. #TODO:
             **kwargs (Optional[Any]): Set of keyword arguments to support additional filtration's
             when listing the files.
 
@@ -212,11 +241,23 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             FileNotFoundError: When there are no files matching the path given.
         """
-        self._ls(path)
+        root_dir, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
+        inp_key = str(Path(root_dir, external_id_prefix)).lstrip("/")
+        if not (
+            inp_key in self.dircache
+            and inp_key in self.cdf_list_cache
+            and time.time() - self.cdf_list_cache[inp_key] < self.cdf_list_expiry_time
+        ):
+            self._ls(root_dir, external_id_prefix)
 
         file_list = self.dircache.get(path, [])
         if not file_list:
             raise FileNotFoundError
+
+        if path not in self.dircache:
+            self.dircache[path] = [{"type": "directory", "name": path}]
+        else:
+            self.dircache[path].append({"type": "directory", "name": path})
 
         return self.dircache[path] if detail else [x["name"] for x in self.dircache[path]]
 
@@ -236,14 +277,15 @@ class CdfFileSystem(AbstractFileSystem):
         if path in self.dircache and not exist_ok:
             raise FileExistsError
 
-        self.dircache[path] = [{"type": "directory", "name": path.lstrip("/")}]
+        if path not in self.dircache:
+            self.dircache[path] = [{"type": "directory", "name": path}]
 
     def mkdir(self, path: str, create_parents: bool = True, **kwargs: Optional[Any]) -> None:
         """Create a directory at a path given.
 
         Args:
             path (str): Path to use to create a directory.
-            create_parents (bool): Flag to specify if parents needs to be created. #TODO: Analyze & implement
+            create_parents (bool): Flag to specify if parents needs to be created.
             **kwargs (Optional[Any]): Set of keyword arguments to support additional options
             to create a directory.
 
@@ -371,11 +413,11 @@ class CdfFileSystem(AbstractFileSystem):
         """
         _download_retries = 0
         _retry_wait_seconds = 0.5
-        _download_max_retries = 3
+        _download_max_retries = 5
         while True:
             try:
                 return self.cognite_client.files.download_bytes(external_id=external_id)
-            except CogniteAPIError as cognite_exp:
+            except _COMMON_EXCEPTIONS as cognite_exp:
                 if cognite_exp.message.startswith("Files not uploaded") and _download_retries < _download_max_retries:
                     _download_retries += 1
                     time.sleep(_retry_wait_seconds)
@@ -392,7 +434,7 @@ class CdfFileSystem(AbstractFileSystem):
         Args:
             path (str): Path to use to extract the read the contents of file(s) from Cdf.
             recursive (bool): Flag to recursively read multiple files.
-            on_error (str): Flag to indicate how to handle file read exceptions. #TODO:
+            on_error (str): Flag to indicate how to handle file read exceptions.
             **kwargs (Optional[Any]): Set of keyword arguments to read the file contents.
 
         Returns:
@@ -419,9 +461,9 @@ class CdfFileSystem(AbstractFileSystem):
 
 
 class CdfFile(AbstractBufferedFile):
-    """CDF File interface to read/write the files.
+    """CDF File interface to work with a specific file.
 
-    Longer class information... #TODO:
+    Provides an interface to a file to either read or write the data based on the mode defined.
 
     Attributes:
         cognite_client (ClientClient): Cognite client to work with Cdf.
@@ -473,7 +515,7 @@ class CdfFile(AbstractBufferedFile):
         """Upload file contents to CDF.
 
         Args:
-            final (bool): Flag to indicate if this the last block. #TODO:
+            final (bool): Flag to indicate if this the last block.
 
         Returns:
             None.
@@ -482,24 +524,29 @@ class CdfFile(AbstractBufferedFile):
             RuntimeError: When an unexpected error occurred.
         """
         try:
-            metadata = {"size": self.buffer.getbuffer().nbytes}
-            self.cognite_client.files.upload_bytes(
+            response = self.cognite_client.files.upload_bytes(
                 content=self.buffer.getbuffer(),
                 name=Path(self.external_id).name,
                 external_id=self.external_id,
                 directory=self.root_dir,
-                source=self.fs.metadata.get("source"),
-                mime_type=self.fs.metadata.get("mime_type"),
-                data_set_id=self.fs.metadata.get("data_set_id"),
-                geo_location=self.fs.metadata.get("geo_location"),
-                metadata=metadata,
+                source=self.fs.file_metadata.source,
+                asset_ids=self.fs.file_metadata.asset_ids,
+                data_set_id=self.fs.file_metadata.data_set_id,
+                mime_type=self.fs.file_metadata.mime_type,
+                geo_location=self.fs.file_metadata.geo_location,
+                metadata=(
+                    self.fs.file_metadata.metadata.update({"size": self.buffer.getbuffer().nbytes})
+                    if self.fs.file_metadata.metadata
+                    else {"size": self.buffer.getbuffer().nbytes}
+                ),
                 overwrite=True,
             )
 
-            self.fs.cache_path(self.root_dir, self.external_id, metadata["size"])
-
-        except CogniteAPIError as cognite_exp:
-            raise RuntimeError from cognite_exp  # TODO: Raise appropriate exception/ Handle clean up
+            self.fs.cache_path(
+                self.root_dir, self.external_id, response.metadata.get("size") if response.metadata.get("size") else -1
+            )
+        except _COMMON_EXCEPTIONS as cognite_exp:
+            raise RuntimeError from cognite_exp
 
     def read(self, length: int = -1) -> Any:
         """Read file contents from CDF.
