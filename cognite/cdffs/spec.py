@@ -13,7 +13,6 @@ from cognite.client.exceptions import (
     CogniteConnectionRefused,
 )
 from fsspec import AbstractFileSystem
-from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 
 logger = logging.getLogger(__name__)
@@ -196,7 +195,7 @@ class CdfFileSystem(AbstractFileSystem):
             list_query = {
                 x[0]: x[1]
                 for x in zip(("directory_prefix", "external_id_prefix"), (root_dir, external_id_prefix))
-                if x[1] != "/"
+                if x[1] != "/" and x[1] != ""
             }
 
             # Get all the files that were previously cached when writing. (if applicable)
@@ -250,16 +249,17 @@ class CdfFileSystem(AbstractFileSystem):
         ):
             self._ls(root_dir, external_id_prefix)
 
-        file_list = self.dircache.get(path, [])
+        inp_path = path.rstrip("/")
+        file_list = self.dircache.get(inp_path, [])
         if not file_list:
             raise FileNotFoundError
 
-        if path not in self.dircache:
-            self.dircache[path] = [{"type": "directory", "name": path}]
+        if inp_path not in self.dircache:
+            self.dircache[inp_path] = [{"type": "directory", "name": inp_path}]
         else:
-            self.dircache[path].append({"type": "directory", "name": path})
+            self.dircache[inp_path].append({"type": "directory", "name": inp_path})
 
-        return self.dircache[path] if detail else [x["name"] for x in self.dircache[path]]
+        return self.dircache[inp_path] if detail else [x["name"] for x in self.dircache[inp_path]]
 
     def makedirs(self, path: str, exist_ok: bool = True) -> None:
         """Create a directory at a path given.
@@ -511,7 +511,7 @@ class CdfFile(AbstractBufferedFile):
         self.root_dir: str = directory
         self.external_id: str = external_id
 
-    def _upload_chunk(self, final: bool = False) -> None:
+    def _upload_chunk(self, final: bool = False) -> bool:
         """Upload file contents to CDF.
 
         Args:
@@ -524,40 +524,45 @@ class CdfFile(AbstractBufferedFile):
             RuntimeError: When an unexpected error occurred.
         """
         try:
-            response = self.cognite_client.files.upload_bytes(
-                content=self.buffer.getbuffer(),
-                name=Path(self.external_id).name,
-                external_id=self.external_id,
-                directory=self.root_dir,
-                source=self.fs.file_metadata.source,
-                asset_ids=self.fs.file_metadata.asset_ids,
-                data_set_id=self.fs.file_metadata.data_set_id,
-                mime_type=self.fs.file_metadata.mime_type,
-                geo_location=self.fs.file_metadata.geo_location,
-                metadata=(
-                    self.fs.file_metadata.metadata.update({"size": self.buffer.getbuffer().nbytes})
-                    if self.fs.file_metadata.metadata
-                    else {"size": self.buffer.getbuffer().nbytes}
-                ),
-                overwrite=True,
-            )
+            if final is True:
+                response = self.cognite_client.files.upload_bytes(
+                    content=self.buffer.getbuffer(),
+                    name=Path(self.external_id).name,
+                    external_id=self.external_id,
+                    directory=self.root_dir,
+                    source=self.fs.file_metadata.source,
+                    asset_ids=self.fs.file_metadata.asset_ids,
+                    data_set_id=self.fs.file_metadata.data_set_id,
+                    mime_type=self.fs.file_metadata.mime_type,
+                    geo_location=self.fs.file_metadata.geo_location,
+                    metadata=(
+                        self.fs.file_metadata.metadata.update({"size": self.buffer.getbuffer().nbytes})
+                        if self.fs.file_metadata.metadata
+                        else {"size": self.buffer.getbuffer().nbytes}
+                    ),
+                    overwrite=True,
+                )
 
-            self.fs.cache_path(
-                self.root_dir, self.external_id, response.metadata.get("size") if response.metadata.get("size") else -1
-            )
+                self.fs.cache_path(
+                    self.root_dir,
+                    self.external_id,
+                    response.metadata.get("size") if response.metadata.get("size") else -1,
+                )
+
+            return final
         except _COMMON_EXCEPTIONS as cognite_exp:
             raise RuntimeError from cognite_exp
 
-    def read(self, length: int = -1) -> Any:
+    def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.
 
+        Read all the file contents and preserve it in `readahead` cache. (default cache.)
+
         Args:
-            length (int): Length of a data to read.
+            start (int): Start position of the file.
+            end (int): End position of the file.
 
         Returns:
-            None.
+            bytes: File contents as is from the blob storage.
         """
-        inp_data = self.fs.read_file(self.external_id)
-        self.size = len(inp_data)
-        self.cache = AllBytes(size=len(inp_data), fetcher=None, blocksize=None, data=inp_data)
-        return super().read(length)
+        return self.fs.read_file(self.external_id)

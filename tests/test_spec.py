@@ -392,7 +392,6 @@ def test_split_path_exception(fs, test_input):
 def test_ls(fs, detail_flag, test_input, expected_result):
     fs.file_metadata = FileMetadata(metadata={})
     result_data = fs.ls(test_input, detail=detail_flag)
-    print(expected_result, result_data)
     assert expected_result == result_data
 
 
