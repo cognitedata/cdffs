@@ -13,6 +13,7 @@ from cognite.client.exceptions import (
     CogniteConnectionRefused,
 )
 from fsspec import AbstractFileSystem
+from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ class CdfFileSystem(AbstractFileSystem):
         cdf_list_cache (Dict): Cache the file list results from CDF.
         cdf_list_expiry_time (int): Expiry time in seconds to invalidate the file list cache.
         file_metadata (FileMetadata): File Metadata that a user can use when reading/writing the files to CDF.
+        file_cache (Dict): Cache the contents of the files.
     """
 
     protocol: str = "cdffs"
@@ -67,6 +69,7 @@ class CdfFileSystem(AbstractFileSystem):
             raise ValueError("User must provide a valid `file_metadata` in storage_options")
         self.cdf_list_cache: Dict[str, float] = {}
         self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
+        self.file_cache: Dict[str, bytes] = {}
 
         # Create a connection to Cdf
         self.do_connect(connection_config)
@@ -459,6 +462,24 @@ class CdfFileSystem(AbstractFileSystem):
             external_id = self.split_path(path)[2]
             return self.read_file(external_id)
 
+    def _fetch_file(self, external_id: str) -> AllBytes:
+        """Read the contents of a file using external_id and Cache the file contents.
+
+        if the file is already cached, it will return the cached file contents. Otherwise, It will
+        fetch the data from CDF.
+
+        Args:
+            external_id (str): External Id of the file to fetch the contents.
+
+        Returns:
+            AllBytes: Cached file contents.
+        """
+        if external_id not in self.file_cache:
+            inp_data = self.read_file(external_id)
+            self.file_cache[external_id] = AllBytes(size=len(inp_data), fetcher=None, blocksize=None, data=inp_data)
+
+        return self.file_cache[external_id]
+
 
 class CdfFile(AbstractBufferedFile):
     """CDF File interface to work with a specific file.
@@ -556,7 +577,7 @@ class CdfFile(AbstractBufferedFile):
     def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.
 
-        Read all the file contents and preserve it in `readahead` cache. (default cache.)
+        Read all the file contents and preserve it in cache (AllBytes).
 
         Args:
             start (int): Start position of the file.
@@ -565,4 +586,5 @@ class CdfFile(AbstractBufferedFile):
         Returns:
             bytes: File contents as is from the blob storage.
         """
-        return self.fs.read_file(self.external_id)
+        self.cache = self.fs._fetch_file(self.external_id)
+        return self.cache._fetch(start, end)

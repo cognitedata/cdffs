@@ -10,6 +10,13 @@ packages = [
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
 pytest-cov = "^4.0.0"
+black = "^22.10.0"
+pandas = "^1.5.1"
+geopandas = "^0.12.1"
+pyarrow = "^10.0.0"
+xarray = "^2022.11.0"
+zarr = "^2.13.3"
+dask = "^2022.11.0"
 
 
 [tool.black]
