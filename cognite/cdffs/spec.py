@@ -120,7 +120,7 @@ class CdfFileSystem(AbstractFileSystem):
             validate_suffix (bool): Flag to validate if the file name must have a valid suffix.
 
         Returns:
-            List: Returns the list of parts with a valid file suffix.
+            Tuple: Returns the list of parts with a valid file suffix.
 
         Raises:
             ValueError: When an invalid input path is given.
