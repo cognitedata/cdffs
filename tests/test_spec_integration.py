@@ -15,20 +15,19 @@ from cognite.cdffs.spec import CdfFileSystem
 
 global_config.disable_pypi_version_check = True
 
+CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
+TENANT_ID = os.environ.get("TENANT_ID")
 
-COGNITE_PROJECT = "oceandata-dev"
-TENANT_ID = "755f6e58-74f0-4a07-a599-f7479b9669ab"
-CLIENT_ID = "4c96ecc0-61c2-4424-82e2-d908b410934f"
-CDF_CLUSTER = "westeurope-1"
-
-if not CLIENT_SECRET:
-    raise ValueError("CLIENT_SECRET can not be blank or None")
+if not CLIENT_ID or not CLIENT_SECRET or not TENANT_ID:
+    raise ValueError("CLIENT_ID/CLIENT_SECRET/TENANT_ID can not be blank or None")
 
 # Create CDF Client.
+COGNITE_PROJECT = "oceandata-dev"
+CDF_CLUSTER = "westeurope-1"
+DATASET_ID = 5159640805917737
 SCOPES = [f"https://{CDF_CLUSTER}.cognitedata.com/.default"]
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-DATASET_ID = 5159640805917737
 
 _SOURCES = [
     "test_int_pandas_csv",
@@ -48,7 +47,7 @@ def client_config():
     )
 
     client_cnf = ClientConfig(
-        client_name="hub-ocean-client",
+        client_name="hub-ocean-integration-test-client",
         base_url=f"https://{CDF_CLUSTER}.cognitedata.com",
         project=COGNITE_PROJECT,
         credentials=auth_creds,

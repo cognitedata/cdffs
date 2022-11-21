@@ -38,5 +38,8 @@ jobs:
       - name: Run tests
         env:
           environment: main
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          TENANT_ID: 755f6e58-74f0-4a07-a599-f7479b9669ab
         run: |
           poetry run pytest tests/
