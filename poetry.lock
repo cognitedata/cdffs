@@ -897,7 +897,7 @@ jupyter = ["ipytree", "notebook"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "08c16ca0e132c3bd33d2f28f97e993774a7fce8b7dcc0fdfbaef61ebbdc678da"
+content-hash = "8e634a970821bf0ebdb32f0d424f56dbcd51230768ea8ea827360f651963da57"
 
 [metadata.files]
 asciitree = [

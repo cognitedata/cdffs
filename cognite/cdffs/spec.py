@@ -18,6 +18,7 @@ from fsspec.spec import AbstractBufferedFile
 
 logger = logging.getLogger(__name__)
 _COMMON_EXCEPTIONS = (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError)
+_CACHE_SLEEP_INTERVAL = 5
 
 
 class CdfFileSystem(AbstractFileSystem):
@@ -69,7 +70,7 @@ class CdfFileSystem(AbstractFileSystem):
             raise ValueError("User must provide a valid `file_metadata` in storage_options")
         self.cdf_list_cache: Dict[str, float] = {}
         self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
-        self.file_cache: Dict[str, bytes] = {}
+        self.file_cache: Dict[str, Dict[str, Any]] = {}
 
         # Create a connection to Cdf
         self.do_connect(connection_config)
@@ -157,10 +158,18 @@ class CdfFileSystem(AbstractFileSystem):
         inp_path = Path(root_dir, external_id)
         file_meta = {"type": "file", "name": str(inp_path).lstrip("/"), "size": file_size}
         parent_path = str(inp_path.parent).lstrip("/")
+
         if parent_path not in self.dircache:
             self.dircache[parent_path] = [file_meta]
         else:
             self.dircache[parent_path].append(file_meta)
+
+        grand_parent_path = str(Path(parent_path).parent).lstrip("/")
+        dir_meta = {"type": "directory", "name": parent_path.lstrip("/")}
+        if grand_parent_path not in self.dircache:
+            self.dircache[grand_parent_path] = [dir_meta]
+        else:
+            self.dircache[grand_parent_path].append(dir_meta)
 
     def _add_dirs_to_cache(self, directories: Dict[str, Dict[str, Any]]) -> None:
         """Add all the directories extracted from file metadata to the dircache.
@@ -474,11 +483,20 @@ class CdfFileSystem(AbstractFileSystem):
         Returns:
             AllBytes: Cached file contents.
         """
-        if external_id not in self.file_cache:
-            inp_data = self.read_file(external_id)
-            self.file_cache[external_id] = AllBytes(size=len(inp_data), fetcher=None, blocksize=None, data=inp_data)
+        # If same file is requested again when it is already being downloaded, wait the download to complete.
+        while external_id in self.file_cache and not self.file_cache[external_id]["fetch_status"]:
+            time.sleep(_CACHE_SLEEP_INTERVAL)
 
-        return self.file_cache[external_id]
+        if external_id not in self.file_cache:
+            self.file_cache[external_id] = {}
+            self.file_cache[external_id]["fetch_status"] = False
+            inp_data = self.read_file(external_id)
+            self.file_cache[external_id]["cache"] = AllBytes(
+                size=len(inp_data), fetcher=None, blocksize=None, data=inp_data
+            )
+            self.file_cache[external_id]["fetch_status"] = True
+
+        return self.file_cache[external_id]["cache"]
 
 
 class CdfFile(AbstractBufferedFile):
@@ -520,17 +538,23 @@ class CdfFile(AbstractBufferedFile):
         Returns:
             None.
         """
+        self.cognite_client: CogniteClient = coginte_client
+        self.root_dir: str = directory
+        self.external_id: str = external_id
+
+        # Default cache type is all. User cannot override the default caching.
+        if "cache_type" in kwargs:
+            kwargs.pop("cache_type")
+
         super().__init__(
             fs,
             path,
             mode=mode,
             block_size=block_size,
+            cache_type="all",
             cache_options=cache_options,
             **kwargs,
         )
-        self.cognite_client: CogniteClient = coginte_client
-        self.root_dir: str = directory
-        self.external_id: str = external_id
 
     def _upload_chunk(self, final: bool = False) -> bool:
         """Upload file contents to CDF.

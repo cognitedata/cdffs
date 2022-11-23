@@ -462,14 +462,7 @@ def test_makedirs_exception(fs, exist_ok_flag, test_input, expected_result):
             ",A,B\n0,1,2\n1,4,5\n",
             17,
             "successful",
-        ),
-        (
-            "/sample_data/out/sample/df.csv",
-            "ab",
-            ",A,B\n0,1,2\n1,4,5\n",
-            17,
-            "successful",
-        ),
+        )
     ],
     indirect=["mock_files_upload_response"],
 )
@@ -602,8 +595,8 @@ def test_ls_cognite_exception(fs, test_input):
 @pytest.mark.usefixtures("mock_files_download_response")
 def test_open_read_exception(fs, test_path, test_out_length):
     fs.file_metadata = FileMetadata(metadata={})
-    cdf_file = fs.open(test_path, mode="rb")
     with pytest.raises(FileNotFoundError):
+        cdf_file = fs.open(test_path, mode="rb")
         cdf_file.read(length=test_out_length)
 
 

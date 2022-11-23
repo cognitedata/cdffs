@@ -168,6 +168,7 @@ def test_xarray_zarr(cognite_client, client_config):
         dims=("x", "y"),
         coords={"x": np.random.uniform(low=7, high=40, size=(50,)), "y": np.random.uniform(low=7, high=40, size=(2,))},
     ).to_dataset(name="test_int_xarray_zarr")
+
     file_metadata = FileMetadata(
         source="test_int_xarray_zarr", mime_type="application/octet-stream", data_set_id=DATASET_ID
     )
@@ -184,12 +185,7 @@ def test_xarray_zarr(cognite_client, client_config):
     )
     assert inp_ds.dims == res_da.dims
     assert inp_ds.sizes == res_da.sizes
-    status = inp_ds.identical(res_da)
-    if not status:
-        inp_ds.to_dataframe().to_csv("inp_ds.csv")
-        res_da.to_dataframe().to_csv("res_da.csv")
-
-    assert status
+    assert inp_ds.identical(res_da)
 
 
 # Package: dask
