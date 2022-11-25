@@ -341,7 +341,7 @@ class CdfFileSystem(AbstractFileSystem):
         source_path: str,
         destination_path: str,
         recursive: bool = False,
-        maxdepth: int = None,
+        maxdepth: Union[int, None] = None,
         **kwargs: Optional[Any],
     ) -> None:
         """Move the files and directories at a path given to a new path.
