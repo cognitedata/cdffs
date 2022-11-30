@@ -57,9 +57,6 @@ class CdfFileSystem(AbstractFileSystem):
             **kwargs (Optional[Any]): Set of keyword arguments to create a CDF client connection and a file metadata
             information.
 
-        Returns:
-            None.
-
         Raises:
             ValueError: An error occurred when creating connection to CDF.
         """
@@ -121,7 +118,7 @@ class CdfFileSystem(AbstractFileSystem):
             validate_suffix (bool): Flag to validate if the file name must have a valid suffix.
 
         Returns:
-            Tuple: Returns the list of parts with a valid file suffix.
+            Tuple: Returns a tuple with root_dir, external_id_prefix and external_id.
 
         Raises:
             ValueError: When an invalid input path is given.
@@ -151,9 +148,7 @@ class CdfFileSystem(AbstractFileSystem):
         Args:
             root_dir (str): Root directory for the file.
             external_id (str): External Id for the file.
-
-        Returns:
-            None.
+            file_size (int): File size (in bytes).
         """
         inp_path = Path(root_dir, external_id)
         file_meta = {"type": "file", "name": str(inp_path).lstrip("/"), "size": file_size}
@@ -177,9 +172,6 @@ class CdfFileSystem(AbstractFileSystem):
         Args:
             directories (Dict[str, Dict[str, Any]]): A dictionary with directory path as key and
             list of all it's child directories as its value.
-
-        Returns:
-            None.
         """
         for dir_name, dir_val in directories.items():
             parent_path = str(Path(dir_name).parent)
@@ -195,20 +187,19 @@ class CdfFileSystem(AbstractFileSystem):
             root_dir (str): Root directory for the file.
             external_id (str): External Id for the file.
 
-        Returns:
-            None.
-
         Raises:
             FileNotFoundError: An error occurred when extracting a file metadata.
         """
         try:
             directories: Dict[str, Dict[str, Any]] = {}
+            list_query: Dict[str, str] = {}
             inp_key = str(Path(root_dir, external_id_prefix)).lstrip("/")
-            list_query = {
-                x[0]: x[1]
-                for x in zip(("directory_prefix", "external_id_prefix"), (root_dir, external_id_prefix))
-                if x[1] != "/" and x[1] != ""
-            }
+
+            # Add directory_prefix and external_id_prefix only if they are valid.
+            if root_dir not in ("/", ""):
+                list_query["directory_prefix"] = root_dir
+            if external_id_prefix != "":
+                list_query["external_id_prefix"] = external_id_prefix
 
             # Get all the files that were previously cached when writing. (if applicable)
             _file_write_cache = {d_info["name"]: True for d_path in self.dircache for d_info in self.dircache[d_path]}
@@ -280,9 +271,6 @@ class CdfFileSystem(AbstractFileSystem):
             path (str): Path to use to create a directory.
             exist_ok (bool): Flag to specify if error can be ignored when directory already exists.
 
-        Returns:
-            None.
-
         Raises:
             FileExistsError: When the directory prefixes already exists.
         """
@@ -300,9 +288,6 @@ class CdfFileSystem(AbstractFileSystem):
             create_parents (bool): Flag to specify if parents needs to be created.
             **kwargs (Optional[Any]): Set of keyword arguments to support additional options
             to create a directory.
-
-        Returns:
-            None.
         """
         self.makedirs(path, exist_ok=bool(kwargs.get("exist_ok")))
 
@@ -314,9 +299,6 @@ class CdfFileSystem(AbstractFileSystem):
             create_parents (bool): Flag to specify if parents needs to be created.
             **kwargs (Optional[Any]): Set of keyword arguments to support additional options
             to create a directory.
-
-        Returns:
-            None.
         """
         self.makedirs(path)
 
@@ -328,11 +310,8 @@ class CdfFileSystem(AbstractFileSystem):
             recursive (bool): Flag to recursively delete a directory.
             maxdepth (Union[int, None]): Maximum depth to traverse and delete if recursive option is used.
 
-        Returns:
-            None.
-
         Raises:
-            NotImplementedError: Error as it is not implemented yet.
+            NotImplementedError: Error as it is not supported.
         """
         raise NotImplementedError
 
@@ -354,11 +333,8 @@ class CdfFileSystem(AbstractFileSystem):
             **kwargs (Optional[Any]): Set of keyword arguments to support additional options
             to move directory.
 
-        Returns:
-            None.
-
         Raises:
-            NotImplementedError: Error as it is not implemented yet.
+            NotImplementedError: Error as it is not supported.
         """
         raise NotImplementedError
 
@@ -369,11 +345,8 @@ class CdfFileSystem(AbstractFileSystem):
             path (str): Path to use to change directory.
             **kwargs (Optional[Any]): Set of keyword arguments to perform change directory.
 
-        Returns:
-            None.
-
         Raises:
-            NotImplementedError: Error as it is not implemented yet.
+            NotImplementedError: Error as it is not supported.
         """
         raise NotImplementedError
 
@@ -519,7 +492,7 @@ class CdfFile(AbstractBufferedFile):
         external_id: str,
         mode: str = "rb",
         block_size: str = "default",
-        cache_options: Optional[Dict[Any, Any]] = {},
+        cache_options: Optional[Union[Dict[Any, Any], None]] = None,
         **kwargs: Optional[Any],
     ) -> None:
         """Initialize the CdfFile.
@@ -534,9 +507,6 @@ class CdfFile(AbstractBufferedFile):
             block_size (str): Block size to read/write the file.
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
-
-        Returns:
-            None.
         """
         self.cognite_client: CogniteClient = coginte_client
         self.root_dir: str = directory
@@ -563,13 +533,13 @@ class CdfFile(AbstractBufferedFile):
             final (bool): Flag to indicate if this the last block.
 
         Returns:
-            None.
+            bool: Flag to indicate if the file contents are expected to buffered.
 
         Raises:
             RuntimeError: When an unexpected error occurred.
         """
         try:
-            if final is True:
+            if final:
                 response = self.cognite_client.files.upload_bytes(
                     content=self.buffer.getbuffer(),
                     name=Path(self.external_id).name,
@@ -608,7 +578,7 @@ class CdfFile(AbstractBufferedFile):
             end (int): End position of the file.
 
         Returns:
-            bytes: File contents as is from the blob storage.
+            bytes: Subset of file contents.
         """
-        self.cache = self.fs._fetch_file(self.external_id)
-        return self.cache._fetch(start, end)
+        cache = self.fs._fetch_file(self.external_id)
+        return cache._fetch(start, end)

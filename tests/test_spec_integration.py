@@ -23,9 +23,9 @@ if not CLIENT_ID or not CLIENT_SECRET or not TENANT_ID:
     raise ValueError("CLIENT_ID/CLIENT_SECRET/TENANT_ID can not be blank or None")
 
 # Create CDF Client.
-COGNITE_PROJECT = "oceandata-dev"
-CDF_CLUSTER = "westeurope-1"
-DATASET_ID = 5159640805917737
+COGNITE_PROJECT = os.getenv("COGNITE_PROJECT", "oceandata-dev")
+CDF_CLUSTER = os.getenv("CDF_CLUSTER", "westeurope-1")
+DATASET_EXTERNAL_ID = os.getenv("DATASET_EXTERNAL_ID", "dataset:integration_tests")
 SCOPES = [f"https://{CDF_CLUSTER}.cognitedata.com/.default"]
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
 
@@ -60,6 +60,14 @@ def cognite_client(client_config):
     return CogniteClient(client_config)
 
 
+@pytest.fixture(scope="session")
+def data_set_id(cognite_client):
+    data_set = cognite_client.data_sets.retrieve(external_id=DATASET_EXTERNAL_ID)
+    if not data_set:
+        raise ValueError("Invalid dataset external Id")
+    return data_set.id
+
+
 def verify_file_status(cognite_client, source, external_ids):
     while True:
         if (
@@ -88,10 +96,10 @@ def cleanup(cognite_client):
 
 # Package: Pandas
 # File-format: csv
-def test_pandas_csv(cognite_client, client_config):
+def test_pandas_csv(cognite_client, client_config, data_set_id):
     """Test read/write operations using pandas."""
     inp_df = pd.DataFrame(np.arange(100).reshape(50, 2), columns=["x", "y"])
-    file_metadata = FileMetadata(source="test_int_pandas_csv", mime_type="application/csv", data_set_id=DATASET_ID)
+    file_metadata = FileMetadata(source="test_int_pandas_csv", mime_type="application/csv", data_set_id=data_set_id)
     inp_df.to_csv(
         "cdffs://tests/integration/pandas/csv/test_int_pandas.csv",
         index=False,
@@ -111,11 +119,11 @@ def test_pandas_csv(cognite_client, client_config):
 
 # Package: Pandas
 # File-format: parquet
-def test_pandas_parquet(cognite_client, client_config):
+def test_pandas_parquet(cognite_client, client_config, data_set_id):
     """Test read/write operations using pandas."""
     inp_df = pd.DataFrame(np.arange(100).reshape(50, 2), columns=["x", "y"])
     file_metadata = FileMetadata(
-        source="test_int_pandas_parquet", mime_type="application/octet-stream", data_set_id=DATASET_ID
+        source="test_int_pandas_parquet", mime_type="application/octet-stream", data_set_id=data_set_id
     )
     inp_df.to_parquet(
         "cdffs://tests/integration/pandas/parquet/test_int_pandas.parquet",
@@ -136,11 +144,11 @@ def test_pandas_parquet(cognite_client, client_config):
 
 # Package: Pandas
 # File-format: json
-def test_pandas_json(cognite_client, client_config):
+def test_pandas_json(cognite_client, client_config, data_set_id):
     """Test read/write operations using pandas."""
     inp_df = pd.DataFrame(np.arange(100).reshape(50, 2), columns=["x", "y"])
     file_metadata = FileMetadata(
-        source="test_int_pandas_json", mime_type="application/octet-stream", data_set_id=DATASET_ID
+        source="test_int_pandas_json", mime_type="application/octet-stream", data_set_id=data_set_id
     )
     inp_df.to_json(
         "cdffs://tests/integration/pandas/json/test_int_pandas.json",
@@ -161,7 +169,7 @@ def test_pandas_json(cognite_client, client_config):
 
 # Package: xarray
 # File-format: zarr
-def test_xarray_zarr(cognite_client, client_config):
+def test_xarray_zarr(cognite_client, client_config, data_set_id):
     """Test read/write operations using xarray."""
     inp_ds = xr.DataArray(
         np.random.randn(50, 2),
@@ -170,7 +178,7 @@ def test_xarray_zarr(cognite_client, client_config):
     ).to_dataset(name="test_int_xarray_zarr")
 
     file_metadata = FileMetadata(
-        source="test_int_xarray_zarr", mime_type="application/octet-stream", data_set_id=DATASET_ID
+        source="test_int_xarray_zarr", mime_type="application/octet-stream", data_set_id=data_set_id
     )
     inp_ds.to_zarr(
         "cdffs://tests/integration/xarray/zarr/test_int_xarray.zarr",
@@ -190,12 +198,12 @@ def test_xarray_zarr(cognite_client, client_config):
 
 # Package: dask
 # File-format: csv (single file)
-def test_dask_csv_single_file(cognite_client, client_config):
+def test_dask_csv_single_file(cognite_client, client_config, data_set_id):
     """Test read/write operations using dask."""
     inp_df = dd.from_pandas(
         pd.DataFrame(np.arange(100).reshape(50, 2), columns=["x", "y"]), npartitions=1
     ).reset_index()
-    file_metadata = FileMetadata(source="test_int_dask_csv", mime_type="application/csv", data_set_id=DATASET_ID)
+    file_metadata = FileMetadata(source="test_int_dask_csv", mime_type="application/csv", data_set_id=data_set_id)
     inp_df.to_csv(
         "cdffs://tests/integration/dask/csv/test_int_dask_single_file.csv",
         index=False,
@@ -215,12 +223,12 @@ def test_dask_csv_single_file(cognite_client, client_config):
 
 # Package: dask
 # File-format: csv (multiple files)
-def test_dask_csv_multiple_files(cognite_client, client_config):
+def test_dask_csv_multiple_files(cognite_client, client_config, data_set_id):
     """Test read/write operations using dask."""
     inp_df = dd.from_pandas(
         pd.DataFrame(np.arange(200).reshape(100, 2), columns=["x", "y"]), npartitions=3
     ).reset_index()
-    file_metadata = FileMetadata(source="test_int_dask_csv", mime_type="application/csv", data_set_id=DATASET_ID)
+    file_metadata = FileMetadata(source="test_int_dask_csv", mime_type="application/csv", data_set_id=data_set_id)
     inp_df.to_csv(
         "cdffs://tests/integration/dask/csv/test_int_dask_multiple_files.csv",
         index=False,
@@ -239,13 +247,13 @@ def test_dask_csv_multiple_files(cognite_client, client_config):
 
 # Package: dask
 # File-format: parquet (single file)
-def test_dask_parquet_single_file(cognite_client, client_config):
+def test_dask_parquet_single_file(cognite_client, client_config, data_set_id):
     """Test read/write operations using dask."""
     inp_df = dd.from_pandas(
         pd.DataFrame(np.arange(100).reshape(50, 2), columns=["x", "y"]), npartitions=1
     ).reset_index()
     file_metadata = FileMetadata(
-        source="test_int_dask_parquet", mime_type="application/octet-stream", data_set_id=DATASET_ID
+        source="test_int_dask_parquet", mime_type="application/octet-stream", data_set_id=data_set_id
     )
     inp_df.to_parquet(
         "cdffs://tests/integration/dask/parquet/test_int_dask_single_file.parquet",
@@ -264,13 +272,13 @@ def test_dask_parquet_single_file(cognite_client, client_config):
 
 # Package: dask
 # File-format: parquet (multiple files)
-def test_dask_parquet_multiple_file(cognite_client, client_config):
+def test_dask_parquet_multiple_file(cognite_client, client_config, data_set_id):
     """Test read/write operations using dask."""
     inp_df = dd.from_pandas(
         pd.DataFrame(np.arange(100).reshape(50, 2), columns=["x", "y"]), npartitions=1
     ).reset_index()
     file_metadata = FileMetadata(
-        source="test_int_dask_parquet", mime_type="application/octet-stream", data_set_id=DATASET_ID
+        source="test_int_dask_parquet", mime_type="application/octet-stream", data_set_id=data_set_id
     )
     inp_df.to_parquet(
         "cdffs://tests/integration/dask/parquet/test_int_dask_multiple_files.parquet",
@@ -289,11 +297,11 @@ def test_dask_parquet_multiple_file(cognite_client, client_config):
 
 # Package: geopandas
 # File-format: parquet
-def test_geopandas_parquet(cognite_client, client_config):
+def test_geopandas_parquet(cognite_client, client_config, data_set_id):
     """Test read/write operations using geopandas."""
     inp_df = gpd.GeoDataFrame.from_file(gpd.datasets.get_path("nybb"))
     file_metadata = FileMetadata(
-        source="test_int_geopandas_parquet", mime_type="application/octet-stream", data_set_id=DATASET_ID
+        source="test_int_geopandas_parquet", mime_type="application/octet-stream", data_set_id=data_set_id
     )
 
     inp_df.to_parquet(
