@@ -20,13 +20,7 @@ from fsspec.spec import AbstractBufferedFile
 from .file_handler import FileException, FileHandler
 
 logger = logging.getLogger(__name__)
-_COMMON_EXCEPTIONS = (
-    CogniteAuthError,
-    CogniteConnectionError,
-    CogniteConnectionRefused,
-    CogniteAPIError,
-)
-
+_COMMON_EXCEPTIONS = (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError)
 _CACHE_SLEEP_INTERVAL = 5
 
 
