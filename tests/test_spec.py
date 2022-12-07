@@ -175,7 +175,12 @@ def mock_files_download_response(request):
 
         if request.param == "successful":
             download_url_response_body = {
-                "items": [{"downloadUrl": "https://azure.blob-test.com/downloaddata", "id": 783443232507908}]
+                "items": [
+                    {
+                        "downloadUrl": "https://azure.blob-test.com/downloaddata",
+                        "externalId": "df.csv",
+                    }
+                ]
             }
 
             download_response_body = ",A,B\n0,1,2\n1,4,5\n".encode("utf-8")
@@ -184,6 +189,12 @@ def mock_files_download_response(request):
             response.add(response.GET, azure_download_url_pattern, status=200, body=download_response_body)
         elif request.param == "failure-file-not-ready":
             download_url_response_body = {"error": {"code": 401, "message": "Files not uploaded: 783443232507908"}}
+            response.add(response.POST, list_url_pattern, status=200, json=list_response_body)
+            response.add(response.POST, read_url_pattern, status=400, json=download_url_response_body)
+        elif request.param == "failure-file-missing":
+            download_url_response_body = {
+                "error": {"code": 401, "message": "Files missing", "missing": {"externalId": "df.csv"}}
+            }
             response.add(response.POST, list_url_pattern, status=200, json=list_response_body)
             response.add(response.POST, read_url_pattern, status=400, json=download_url_response_body)
         yield response
@@ -475,27 +486,36 @@ def test_open_write(fs, test_path, test_mode, test_data, expected_len):
 
 
 @pytest.mark.parametrize(
-    "test_path, test_out_length, expected_result, mock_files_download_response",
+    "test_path, test_out_length, expected_result, cache_type, mock_files_download_response",
     [
         (
             "sample_data/out/sample/df.csv",
             -1,
             ",A,B\n0,1,2\n1,4,5\n".encode("utf-8"),
+            "readahead",
             "successful",
         ),
         (
             "sample_data/out/sample/df.csv",
             11,
             ",A,B\n0,1,2\n".encode("utf-8"),
+            "bytes",
+            "successful",
+        ),
+        (
+            "sample_data/out/sample/df.csv",
+            -1,
+            ",A,B\n0,1,2\n1,4,5\n".encode("utf-8"),
+            "all",
             "successful",
         ),
     ],
     indirect=["mock_files_download_response"],
 )
 @pytest.mark.usefixtures("mock_files_download_response")
-def test_open_read(fs, test_path, test_out_length, expected_result):
+def test_open_read(fs, test_path, test_out_length, expected_result, cache_type):
     fs.file_metadata = FileMetadata(metadata={})
-    cdf_file = fs.open(test_path, mode="rb")
+    cdf_file = fs.open(test_path, mode="rb", cache_type=cache_type)
     test_result = cdf_file.read(length=test_out_length)
     assert test_result == expected_result
 
@@ -588,6 +608,11 @@ def test_ls_cognite_exception(fs, test_input):
             "sample_data/out/sample/df.csv",
             -1,
             "failure-file-not-ready",
+        ),
+        (
+            "sample_data/out/sample/df.csv",
+            -1,
+            "failure-file-missing",
         ),
     ],
     indirect=["mock_files_download_response"],

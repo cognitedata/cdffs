@@ -11,13 +11,22 @@ from cognite.client.exceptions import (
     CogniteAuthError,
     CogniteConnectionError,
     CogniteConnectionRefused,
+    CogniteNotFoundError,
 )
 from fsspec import AbstractFileSystem
 from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 
+from .file_handler import FileException, FileHandler
+
 logger = logging.getLogger(__name__)
-_COMMON_EXCEPTIONS = (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError)
+_COMMON_EXCEPTIONS = (
+    CogniteAuthError,
+    CogniteConnectionError,
+    CogniteConnectionRefused,
+    CogniteAPIError,
+)
+
 _CACHE_SLEEP_INTERVAL = 5
 
 
@@ -33,6 +42,7 @@ class CdfFileSystem(AbstractFileSystem):
         cdf_list_expiry_time (int): Expiry time in seconds to invalidate the file list cache.
         file_metadata (FileMetadata): File Metadata that a user can use when reading/writing the files to CDF.
         file_cache (Dict): Cache the contents of the files.
+        file_handler (FileHandler): File handler to manage the requests to a cloud storage.
     """
 
     protocol: str = "cdffs"
@@ -68,6 +78,7 @@ class CdfFileSystem(AbstractFileSystem):
         self.cdf_list_cache: Dict[str, float] = {}
         self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
         self.file_cache: Dict[str, Dict[str, Any]] = {}
+        self.file_handler: FileHandler = FileHandler()
 
         # Create a connection to Cdf
         self.do_connect(connection_config)
@@ -384,14 +395,18 @@ class CdfFileSystem(AbstractFileSystem):
             **kwargs,
         )
 
-    def read_file(self, external_id: str) -> Any:
+    def read_file(
+        self, external_id: str, start_byte: Union[int, None] = None, end_byte: Union[int, None] = None
+    ) -> Any:
         """Open and read the contents of a file.
 
         Args:
             external_id (str): External Id of the file to fetch the contents.
+            start_byte (int): Start byte for the file only if a specific portion of the file is needed.
+            end_byte (int): End offset for the file only if a specific portion of the file is needed.
 
         Returns:
-            bytes: File contents as is from the blob storage.
+            bytes: File contents as is from a cloud storage.
 
         Raises:
             FileNotFoundError: When there is no file matching the external_id given.
@@ -401,14 +416,23 @@ class CdfFileSystem(AbstractFileSystem):
         _download_max_retries = 5
         while True:
             try:
-                return self.cognite_client.files.download_bytes(external_id=external_id)
-            except _COMMON_EXCEPTIONS as cognite_exp:
-                if cognite_exp.message.startswith("Files not uploaded") and _download_retries < _download_max_retries:
+                if not (download_url := self.file_handler.get_url(external_id)):
+                    url_dict = self.cognite_client.files.retrieve_download_urls(external_id=external_id)
+                    download_url = url_dict[external_id]
+                    self.file_handler.add_or_update_url(external_id, download_url)
+
+                return self.file_handler.download_file(download_url, start_byte, end_byte)
+
+            except (CogniteAPIError, FileException) as cognite_exp:
+                if _download_retries < _download_max_retries:
                     _download_retries += 1
                     time.sleep(_retry_wait_seconds)
                     _retry_wait_seconds *= 2
                     continue
 
+                raise FileNotFoundError from cognite_exp
+
+            except (*_COMMON_EXCEPTIONS, CogniteNotFoundError) as cognite_exp:
                 raise FileNotFoundError from cognite_exp
 
     def cat(
@@ -424,7 +448,7 @@ class CdfFileSystem(AbstractFileSystem):
 
         Returns:
             bytes: File contents for the file name given.
-            Dict[str, bytes]: File contents for the list of file given - if list of files were
+            Dict[str, bytes]: File contents for the list of files given - if list of files were
             given as an argument it will be returned a dictionary with key as path name and contents
             of the files as value for each path.
 
@@ -481,6 +505,7 @@ class CdfFile(AbstractBufferedFile):
         cognite_client (ClientClient): Cognite client to work with Cdf.
         root_dir (str): Root directory for the file.
         external_id (str): External Id for the file.
+        all_bytes_caching (bool): Flag to indicate if the cache type is all bytes caching.
     """
 
     def __init__(
@@ -511,17 +536,13 @@ class CdfFile(AbstractBufferedFile):
         self.cognite_client: CogniteClient = coginte_client
         self.root_dir: str = directory
         self.external_id: str = external_id
-
-        # Default cache type is all. User cannot override the default caching.
-        if "cache_type" in kwargs:
-            kwargs.pop("cache_type")
+        self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
 
         super().__init__(
             fs,
             path,
             mode=mode,
             block_size=block_size,
-            cache_type="all",
             cache_options=cache_options,
             **kwargs,
         )
@@ -580,5 +601,9 @@ class CdfFile(AbstractBufferedFile):
         Returns:
             bytes: Subset of file contents.
         """
-        cache = self.fs._fetch_file(self.external_id)
-        return cache._fetch(start, end)
+        if self.all_bytes_caching:
+            cache = self.fs._fetch_file(self.external_id)
+            file_contents = cache._fetch(start, end)
+        else:
+            file_contents = self.fs.read_file(self.external_id, start_byte=start, end_byte=end)
+        return file_contents
