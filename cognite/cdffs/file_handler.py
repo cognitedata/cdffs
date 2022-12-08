@@ -65,9 +65,7 @@ class FileHandler:
             external_id (str): External Id for the file.
             download_url (str): Download URL for the file.
         """
-        self._url_container[external_id] = {}
-        self._url_container[external_id]["url"] = download_url
-        self._url_container[external_id]["expiry_time"] = time.time()
+        self._url_container[external_id] = {"url": download_url, "expiry_time": time.time()}
 
     def get_url(self, external_id: str) -> Any:
         """Get download url from a cache if they are valid.
