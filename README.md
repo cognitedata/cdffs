@@ -1,6 +1,7 @@
 
 <a href="https://cognite.com/">
-    <img src="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_white.png" alt="Cognite logo" title="Cognite" align="right" height="80" />
+    <img media="(prefers-color-scheme: dark)" src="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_white.png" alt="Cognite logo" title="Cognite" align="right" height="80" />
+    <img media="(prefers-color-scheme: light)" src="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_black.png" alt="Cognite logo" title="Cognite" align="right" height="80" />
 </a>
 
 # cdffs
@@ -47,11 +48,11 @@ Refer [ClientConfig](https://cognite-sdk-python.readthedocs-hosted.com/en/latest
 
     * Read zarr files using using `xarray`.
 
-```python
-ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf})
-```
+    ```python
+    ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf})
+    ```
     * Write zarr files using `xarray`.
-
-```python
-ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "file_metadata": metadata})
-```
+    
+    ```python
+    ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "file_metadata": metadata})
+    ```
