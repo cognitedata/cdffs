@@ -1,3 +1,4 @@
+"""Example script for pandas package."""
 import os
 
 import numpy as np
@@ -20,27 +21,36 @@ DATASET_ID = os.environ.get("DATASET_ID")
 # Create a CDF Client Config
 SCOPES = [f"https://{CDF_CLUSTER}.cognitedata.com/.default"]
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
-oauth_creds = OAuthClientCredentials(
-    token_url=TOKEN_URL, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, scopes=SCOPES
-)
-client_cnf = ClientConfig(
-    client_name="cdf-client",
-    base_url=f"https://{CDF_CLUSTER}.cognitedata.com",
-    project=COGNITE_PROJECT,
-    credentials=oauth_creds,
-    timeout=60,
-)
 
-# Create a dataframe
-df = pd.DataFrame({"x": np.arange(1000), "y": np.arange(1000)})
-file_metadata = FileMetadata(source="pandas_test", mime_type="text/csv", data_set_id=DATASET_ID)
 
-# Write the data using pandas to CDF Files.
-df.to_csv(
-    "cdffs://pandas_test/out/pandas_df.csv",
-    index=False,
-    storage_options={"connection_config": client_cnf, "file_metadata": file_metadata},
-)
+def main():
+    oauth_creds = OAuthClientCredentials(
+        token_url=TOKEN_URL, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, scopes=SCOPES
+    )
+    client_cnf = ClientConfig(
+        client_name="cdf-client",
+        base_url=f"https://{CDF_CLUSTER}.cognitedata.com",
+        project=COGNITE_PROJECT,
+        credentials=oauth_creds,
+        timeout=60,
+    )
 
-# Read the data using pandas from CDF Files.
-df2 = pd.read_csv("cdffs://pandas_test/out/pandas_df.csv", storage_options={"connection_config": client_cnf})
+    # Create a dataframe
+    df = pd.DataFrame({"x": np.arange(1000), "y": np.arange(1000)})
+    file_metadata = FileMetadata(source="pandas_test", mime_type="text/csv", data_set_id=DATASET_ID)
+
+    # Write the data using pandas to CDF Files.
+    df.to_csv(
+        "cdffs://pandas_test/out/pandas_df.csv",
+        index=False,
+        storage_options={"connection_config": client_cnf, "file_metadata": file_metadata},
+    )
+
+    # Read the data using pandas from CDF Files.
+    df2 = pd.read_csv("cdffs://pandas_test/out/pandas_df.csv", storage_options={"connection_config": client_cnf})
+
+    print(df.shape, df2.shape)
+
+
+if __name__ == "__main__":
+    main()
