@@ -1,16 +1,13 @@
 [tool.poetry]
 name = "cognite-cdffs"
-version = "0.2.0"
-description = "File-system interface for CDF Files"
+version = "0.1.0"
+description = "File-System Interface for CDF Files"
 authors = ["Infant Alex <infant.alex@cognite.com>"]
 
 packages = [
     { include="cognite", from="." },
 ]
 [tool.poetry.group.test.dependencies]
-pytest = "^7.2.0"
-pytest-cov = "^4.0.0"
-black = "^22.10.0"
 pandas = "^1.5.1"
 geopandas = "^0.12.1"
 pyarrow = "^10.0.0"
@@ -18,15 +15,24 @@ xarray = "^2022.11.0"
 zarr = "^2.13.3"
 dask = "^2022.11.0"
 
-
-
 [tool.poetry.group.dev.dependencies]
 types-requests = "^2.28.11.5"
+pytest-cov = "^4.0.0"
+black = "^22.10.0"
+responses = "^0.22.0"
+flake8 = "6.0.0"
+pre-commit = "^2.20.0"
+toml = "^0.10.2"
+flake8-pyproject = "^1.2.2"
 
 [tool.black]
 line-length = 120
 target_version = ['py38']
 include = '\.py$'
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203"]
 
 [tool.isort]
 line_length=120                # corresponds to -w  flag
@@ -57,14 +63,9 @@ commands =
 """
 
 [tool.poetry.dependencies]
-python = "^3.8"
-responses = "^0.22.0"
+python = "^3.8.10"
 cognite-sdk = "^4.11.0"
 fsspec = "^2022.10.0"
-pytest = "^7.2.0"
-flake8 = "^5.0.4"
-pre-commit = "^2.20.0"
-toml = "^0.10.2"
 requests = "^2.28.1"
 
 [tool.poetry.dev-dependencies]
