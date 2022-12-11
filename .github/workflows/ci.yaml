@@ -41,5 +41,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           TENANT_ID: 755f6e58-74f0-4a07-a599-f7479b9669ab
+          COGNITE_PROJECT: oceandata-dev
+          CDF_CLUSTER: west-europe1
         run: |
           poetry run pytest tests/

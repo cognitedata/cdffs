@@ -1,4 +1,4 @@
-"""File-system specification for CDF Files."""
+"""File System Specification for CDF Files."""
 import logging
 import time
 from pathlib import Path
@@ -25,7 +25,7 @@ _CACHE_SLEEP_INTERVAL = 5
 
 
 class CdfFileSystem(AbstractFileSystem):
-    """File-system interface to work with the files that are stored in CDF.
+    """File-system interface to work with the CDF files.
 
     Provides an interface to the files that are stored in CDF. Only a handful of methods that are required to support
     the popular python packages are implemented.

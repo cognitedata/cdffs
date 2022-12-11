@@ -2,8 +2,9 @@
 name = "cognite-cdffs"
 version = "0.1.0"
 description = "File-System Interface for CDF Files"
+license = "Apache-2.0"
 authors = ["Infant Alex <infant.alex@cognite.com>"]
-
+readme = "README.md"
 packages = [
     { include="cognite", from="." },
 ]
@@ -24,6 +25,8 @@ flake8 = "6.0.0"
 pre-commit = "^2.20.0"
 toml = "^0.10.2"
 flake8-pyproject = "^1.2.2"
+sphinx = "^5.3.0"
+sphinx-rtd-theme = "^1.1.1"
 
 [tool.black]
 line-length = 120
