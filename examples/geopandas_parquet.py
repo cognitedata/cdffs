@@ -5,7 +5,7 @@ from cognite.client import ClientConfig, global_config
 from cognite.client.credentials import OAuthClientCredentials
 from cognite.client.data_classes.files import FileMetadata
 
-from cognite.cdffs import CdfFileSystem
+from cognite import cdffs
 
 global_config.disable_pypi_version_check = True
 
@@ -37,10 +37,10 @@ file_metadata = FileMetadata(source="test", mime_type="application/octet-stream"
 # Write the parquet file using Geopandas to CDF Files.
 inp_df.to_parquet(
     "/sample/geopandas/sample.parquet",
-    filesystem=CdfFileSystem(connection_config=client_cnf, file_metadata=file_metadata),
+    filesystem=cdffs.CdfFileSystem(connection_config=client_cnf, file_metadata=file_metadata),
 )
 
 # Read the parquet file using Geopandas from CDF Files.
 res_df = gpd.read_parquet(
-    "cdffs://sample/geopandas/sample.parquet", filesystem=CdfFileSystem(connection_config=client_cnf)
+    "cdffs://sample/geopandas/sample.parquet", filesystem=cdffs.CdfFileSystem(connection_config=client_cnf)
 )
