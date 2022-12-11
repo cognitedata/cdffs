@@ -38,6 +38,11 @@ def main():
     inp_df = gpd.GeoDataFrame.from_file(gpd.datasets.get_path("nybb"))
     file_metadata = FileMetadata(source="test", mime_type="application/octet-stream", data_set_id=DATASET_ID)
 
+    # geopandas package use pyarrow to read/write the parquet files from the underlying storage.
+    # As highlighted, pyarrow has it is own generic file system specification but it is compatible with fsspec.
+    # We can still make use of cdffs, we need to instantiate a new CdfFileSystem with client config
+    # and pass it as filesystem when reading/writing the files from/to CDF.
+
     # Write the parquet file using Geopandas to CDF Files.
     inp_df.to_parquet(
         "/sample/geopandas/sample.parquet",

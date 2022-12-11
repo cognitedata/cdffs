@@ -18,13 +18,13 @@ global_config.disable_pypi_version_check = True
 CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 TENANT_ID = os.environ.get("TENANT_ID")
+COGNITE_PROJECT = os.getenv("COGNITE_PROJECT")
+CDF_CLUSTER = os.getenv("CDF_CLUSTER")
 
-if not CLIENT_ID or not CLIENT_SECRET or not TENANT_ID:
-    raise ValueError("CLIENT_ID/CLIENT_SECRET/TENANT_ID can not be blank or None")
+if not (CLIENT_ID and CLIENT_SECRET and TENANT_ID and COGNITE_PROJECT and CDF_CLUSTER):
+    raise ValueError("CLIENT_ID/CLIENT_SECRET/TENANT_ID/COGNITE_PROJECT/CDF_CLUSTER can not be blank or None")
 
 # Create CDF Client.
-COGNITE_PROJECT = os.getenv("COGNITE_PROJECT", "oceandata-dev")
-CDF_CLUSTER = os.getenv("CDF_CLUSTER", "westeurope-1")
 DATASET_EXTERNAL_ID = os.getenv("DATASET_EXTERNAL_ID", "dataset:integration_tests")
 SCOPES = [f"https://{CDF_CLUSTER}.cognitedata.com/.default"]
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
@@ -47,7 +47,7 @@ def client_config():
     )
 
     client_cnf = ClientConfig(
-        client_name="hub-ocean-integration-test-client",
+        client_name="cdffs-integration-test-client",
         base_url=f"https://{CDF_CLUSTER}.cognitedata.com",
         project=COGNITE_PROJECT,
         credentials=auth_creds,

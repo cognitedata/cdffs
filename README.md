@@ -25,24 +25,22 @@ pip install cognite-cdffs
 Three important steps to follow when working with CDF Files using the fsspec supported python packages. 
 
 1) Import `cdffs` package
-
 ```python
-from cognite import cdffs
+  from cognite import cdffs
 ```
 
 2) Create a client config to connect with CDF. 
-
 ```python
-client_cnf = ClientConfig(
-    client_name="cdf-client",
-    base_url=f"https://<cluster>.cognitedata.com",
-    project=<cdf project>,
-    credentials=<cdf credentials>,
-    timeout=60,
-)
+  client_cnf = ClientConfig(
+      client_name="cdf-client",
+      base_url=f"https://<cluster>.cognitedata.com",
+      project=<cdf project>,
+      credentials=<cdf credentials>,
+      timeout=60,
+  )
 ```
 
-Refer [ClientConfig](https://cognite-sdk-python.readthedocs-hosted.com/en/latest/cognite.html#cognite.client.config.ClientConfig) from Cognite Python SDK documentation on how to create a client config.
+  > Refer [ClientConfig](https://cognite-sdk-python.readthedocs-hosted.com/en/latest/cognite.html#cognite.client.config.ClientConfig) from Cognite Python SDK documentation on how to create a client config.
 
 3) Pass the client config as `connection_config` in `storage_options` when reading/writing the data.
 
@@ -56,3 +54,6 @@ Refer [ClientConfig](https://cognite-sdk-python.readthedocs-hosted.com/en/latest
     ```python
     ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "file_metadata": metadata})
     ```
+
+## Contributing
+Want to contribute? Check out [CONTRIBUTING](CONTRIBUTING.md).
