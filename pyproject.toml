@@ -1,0 +1,78 @@
+[tool.poetry]
+name = "cognite-cdffs"
+version = "0.1.0"
+description = "File-System Interface for CDF Files"
+license = "Apache-2.0"
+authors = ["Infant Alex <infant.alex@cognite.com>"]
+readme = "README.md"
+packages = [
+    { include="cognite", from="." },
+]
+[tool.poetry.group.test.dependencies]
+pandas = "^1.5.1"
+geopandas = "^0.12.1"
+pyarrow = "^10.0.0"
+xarray = "^2022.11.0"
+zarr = "^2.13.3"
+dask = "^2022.11.0"
+
+[tool.poetry.group.dev.dependencies]
+types-requests = "^2.28.11.5"
+pytest-cov = "^4.0.0"
+black = "^22.10.0"
+responses = "^0.22.0"
+flake8 = "6.0.0"
+pre-commit = "^2.20.0"
+toml = "^0.10.2"
+flake8-pyproject = "^1.2.2"
+sphinx = "^5.3.0"
+sphinx-rtd-theme = "^1.1.1"
+
+[tool.black]
+line-length = 120
+target_version = ['py38']
+include = '\.py$'
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203"]
+
+[tool.isort]
+line_length=120                # corresponds to -w  flag
+multi_line_output=3            # corresponds to -m  flag
+include_trailing_comma=true    # corresponds to -tc flag
+skip_glob = '^((?!py$).)*$'    # this makes sort all Python files
+known_third_party = []
+profile = "black"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+isolated_build = true
+envlist = py38
+
+[tox]
+isolated_build = true
+envlist = py38
+
+[testenv]
+deps =
+    pytest
+    pytest-cov
+
+commands =
+    coverage run --source cognite -m pytest -v tests
+    coverage xml
+"""
+
+[tool.poetry.dependencies]
+python = "^3.8.10"
+cognite-sdk = "^4.11.0"
+fsspec = "^2022.10.0"
+requests = "^2.28.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
