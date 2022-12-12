@@ -1,8 +1,8 @@
-<a href="https://cognite.com/">
+<picture href="https://cognite.com/">
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_white.png">
   <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_black.png" >
   <img alt="Cognite" src="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_black.png" alt="Cognite logo" title="Cognite" align="right" height="80">
-</a>
+</picture>
 
 # cdffs
 
