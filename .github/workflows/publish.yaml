@@ -38,14 +38,7 @@ jobs:
           COGNITE_PROJECT: oceandata-dev
           CDF_CLUSTER: westeurope-1
         run: |
-          poetry run pytest tests/ -v --cov-report xml:coverage.xml --cov
-          coverage xml
-
-      - name: Codecov report
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
+          poetry run pytest tests/
 
       - name: Build docs
         working-directory: docs
