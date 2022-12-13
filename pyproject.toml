@@ -70,6 +70,7 @@ python = "^3.8.10"
 cognite-sdk = "^4.11.0"
 fsspec = "^2022.10.0"
 requests = "^2.28.1"
+twine = "^4.0.2"
 
 [tool.poetry.dev-dependencies]
 
