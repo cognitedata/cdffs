@@ -21,6 +21,7 @@ release = toml.load("./../../pyproject.toml")["tool"]["poetry"]["version"]
 extensions = ["sphinx_rtd_theme", "sphinx.ext.autosummary", "sphinx.ext.autodoc"]
 
 exclude_patterns = []
+autosummary_generate = True
 autodoc_member_order = "bysource"
 
 # # -- Options for HTML output -------------------------------------------------
