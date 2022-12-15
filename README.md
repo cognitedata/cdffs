@@ -2,9 +2,10 @@
   <img alt="Cognite" src="https://raw.githubusercontent.com/cognitedata/cognite-python-docs/master/img/cognite_logo_black.png" alt="Cognite logo" title="Cognite" align="right" height="80">
 </a>
 
-[![GitHub](https://img.shields.io/github/license/cognitedata/cognite-sdk-python)](https://github.com/cognitedata/cognite-sdk-python/blob/master/LICENSE)
+[![GitHub](https://img.shields.io/github/license/cognitedata/cdffs)](https://github.com/cognitedata/cdffs/blob/main/LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/cdffs/badge/?version=latest)](https://cdffs.readthedocs.io/en/latest/?badge=latest)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+[![codecov](https://codecov.io/gh/cognitedata/cdffs/branch/main/graph/badge.svg)](https://codecov.io/gh/cognitedata/cdffs)
 ![PyPI](https://img.shields.io/pypi/v/cognite-cdffs)
 
 # cdffs
