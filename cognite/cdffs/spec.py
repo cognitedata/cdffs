@@ -576,7 +576,7 @@ class CdfFile(AbstractBufferedFile):
                 self.fs.cache_path(
                     self.root_dir,
                     self.external_id,
-                    response.metadata.get("size") if response.metadata.get("size") else -1,
+                    int(response.metadata.get("size")) if response.metadata.get("size") else -1,
                 )
 
             return final

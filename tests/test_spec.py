@@ -147,7 +147,6 @@ def mock_files_upload_response(request):
 @pytest.fixture
 def mock_files_download_response(request):
     with responses.RequestsMock() as response:
-
         list_response_body = {
             "items": [
                 {
