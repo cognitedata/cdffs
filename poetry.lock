@@ -228,7 +228,7 @@ tox = ["tox"]
 
 [[package]]
 name = "dask"
-version = "2022.12.1"
+version = "2023.2.0"
 description = "Parallel PyData with Task Scheduling"
 category = "dev"
 optional = false
@@ -245,10 +245,10 @@ toolz = ">=0.8.2"
 
 [package.extras]
 array = ["numpy (>=1.18)"]
-complete = ["bokeh (>=2.4.2,<3)", "distributed (==2022.12.1)", "jinja2", "numpy (>=1.18)", "pandas (>=1.0)"]
+complete = ["bokeh (>=2.4.2,<3)", "distributed (==2023.2.0)", "jinja2", "numpy (>=1.18)", "pandas (>=1.0)"]
 dataframe = ["numpy (>=1.18)", "pandas (>=1.0)"]
 diagnostics = ["bokeh (>=2.4.2,<3)", "jinja2"]
-distributed = ["distributed (==2022.12.1)"]
+distributed = ["distributed (==2023.2.0)"]
 test = ["pandas[test]", "pre-commit", "pytest", "pytest-rerunfailures", "pytest-xdist"]
 
 [[package]]
@@ -769,7 +769,7 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pre-commit"
-version = "2.21.0"
+version = "3.0.4"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 category = "dev"
 optional = false
@@ -1401,7 +1401,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8.10"
-content-hash = "303c932a95646f9bd35b7c502987f2d33ce39b8a5b265358579ac9d820a6242d"
+content-hash = "53ab1d8b1f199018561eea6b12da0e29dc1743d52dcc96ed345b902cc86a444d"
 
 [metadata.files]
 alabaster = [
@@ -1717,8 +1717,8 @@ cryptography = [
     {file = "cryptography-39.0.1.tar.gz", hash = "sha256:d1f6198ee6d9148405e49887803907fe8962a23e6c6f83ea7d98f1c0de375695"},
 ]
 dask = [
-    {file = "dask-2022.12.1-py3-none-any.whl", hash = "sha256:a833ee774bf702c08d22f31412358d12b007df36c6e8c107f32f17a4b20f1f68"},
-    {file = "dask-2022.12.1.tar.gz", hash = "sha256:ef12c98a6681964494ddfee4ba8071ebc8895d3c4ea27f5c5160a14e29f01d92"},
+    {file = "dask-2023.2.0-py3-none-any.whl", hash = "sha256:14dedb3ae0be51116365a52e9f39db6e6c866f5ea2244aaae62bd83a0dbaaa92"},
+    {file = "dask-2023.2.0.tar.gz", hash = "sha256:c0716193e0e197bc541199e41770b4f2f7df6c137bb94e5b4812cfdc6cbe0a84"},
 ]
 distlib = [
     {file = "distlib-0.3.6-py2.py3-none-any.whl", hash = "sha256:f35c4b692542ca110de7ef0bea44d73981caeb34ca0b9b6b2e6d7790dda8f80e"},
@@ -2012,8 +2012,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 pre-commit = [
-    {file = "pre_commit-2.21.0-py2.py3-none-any.whl", hash = "sha256:e2f91727039fc39a92f58a588a25b87f936de6567eed4f0e673e0507edc75bad"},
-    {file = "pre_commit-2.21.0.tar.gz", hash = "sha256:31ef31af7e474a8d8995027fefdfcf509b5c913ff31f2015b4ec4beb26a6f658"},
+    {file = "pre_commit-3.0.4-py2.py3-none-any.whl", hash = "sha256:9e3255edb0c9e7fe9b4f328cb3dc86069f8fdc38026f1bf521018a05eaf4d67b"},
+    {file = "pre_commit-3.0.4.tar.gz", hash = "sha256:bc4687478d55578c4ac37272fe96df66f73d9b5cf81be6f28627d4e712e752d5"},
 ]
 protobuf = [
     {file = "protobuf-4.21.12-cp310-abi3-win32.whl", hash = "sha256:b135410244ebe777db80298297a97fbb4c862c881b4403b71bac9d4107d61fd1"},
