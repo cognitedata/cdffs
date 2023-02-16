@@ -12,7 +12,7 @@ packages = [
 pandas = "^1.5.1"
 geopandas = "^0.12.1"
 pyarrow = "^11.0.0"
-xarray = "^2022.11.0"
+xarray = "^2023.0.0"
 zarr = "^2.13.3"
 dask = "^2023.2.0"
 
