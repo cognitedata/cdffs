@@ -505,7 +505,7 @@ class CdfFile(AbstractBufferedFile):
     def __init__(
         self,
         fs: CdfFileSystem,
-        coginte_client: CogniteClient,
+        cognite_client: CogniteClient,
         path: str,
         directory: str,
         external_id: str,
@@ -527,10 +527,15 @@ class CdfFile(AbstractBufferedFile):
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
         """
-        self.cognite_client: CogniteClient = coginte_client
+        self.cognite_client: CogniteClient = cognite_client
         self.root_dir: str = directory
         self.external_id: str = external_id
         self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
+        self.file_metadata: FileMetadata = FileMetadata(metadata={})
+
+        # User can use a file metadata for each file when they write the files.
+        if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
+            self.file_metadata: FileMetadata = kwargs.pop("file_metadata")
 
         super().__init__(
             fs,
@@ -555,21 +560,23 @@ class CdfFile(AbstractBufferedFile):
         """
         try:
             if final:
+                file_metadata = self.file_metadata.metadata or self.fs.file_metadata.metadata
+                file_metadata = (
+                    dict(self.fs.file_metadata.metadata, **{"size": self.buffer.getbuffer().nbytes})
+                    if self.fs.file_metadata.metadata
+                    else {"size": self.buffer.getbuffer().nbytes}
+                )
                 response = self.cognite_client.files.upload_bytes(
                     content=self.buffer.getbuffer(),
                     name=Path(self.external_id).name,
                     external_id=self.external_id,
                     directory=self.root_dir,
-                    source=self.fs.file_metadata.source,
-                    asset_ids=self.fs.file_metadata.asset_ids,
-                    data_set_id=self.fs.file_metadata.data_set_id,
-                    mime_type=self.fs.file_metadata.mime_type,
-                    geo_location=self.fs.file_metadata.geo_location,
-                    metadata=(
-                        self.fs.file_metadata.metadata.update({"size": self.buffer.getbuffer().nbytes})
-                        if self.fs.file_metadata.metadata
-                        else {"size": self.buffer.getbuffer().nbytes}
-                    ),
+                    source=self.file_metadata.source or self.fs.file_metadata.source,
+                    asset_ids=self.file_metadata.asset_ids or self.fs.file_metadata.asset_ids,
+                    data_set_id=self.file_metadata.data_set_id or self.fs.file_metadata.data_set_id,
+                    mime_type=self.file_metadata.mime_type or self.fs.file_metadata.mime_type,
+                    geo_location=self.file_metadata.geo_location or self.fs.file_metadata.geo_location,
+                    metadata=file_metadata,
                     overwrite=True,
                 )
 
