@@ -500,6 +500,7 @@ class CdfFile(AbstractBufferedFile):
         root_dir (str): Root directory for the file.
         external_id (str): External Id for the file.
         all_bytes_caching (bool): Flag to indicate if the cache type is all bytes caching.
+        file_metadata (FileMetadata): File Metadata that a user can use when opening a file to write.
     """
 
     def __init__(
@@ -518,7 +519,7 @@ class CdfFile(AbstractBufferedFile):
 
         Args:
             fs (CdfFileSystem): An instance of a CdfFileSystem.
-            coginte_client (CogniteClient): Cognite client to work with Cdf.
+            cognite_client (CogniteClient): Cognite client to work with Cdf.
             path (str): Absolute path for the file.
             directory (str): Root directory for the file.
             external_id (str): External Id for the file.
@@ -535,7 +536,7 @@ class CdfFile(AbstractBufferedFile):
 
         # User can use a file metadata for each file when they write the files.
         if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
-            self.file_metadata: FileMetadata = kwargs.pop("file_metadata")
+            self.file_metadata = kwargs.pop("file_metadata")
 
         super().__init__(
             fs,
