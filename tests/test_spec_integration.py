@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -37,6 +38,7 @@ _SOURCES = [
     "test_int_dask_csv",
     "test_int_dask_parquet",
     "test_int_geopandas_parquet",
+    "test_int_file_io",
 ]
 
 
@@ -318,3 +320,75 @@ def test_geopandas_parquet(cognite_client, client_config, data_set_id):
 
     assert inp_df.shape == res_df.shape
     assert inp_df.compare(res_df).empty
+
+
+# File IO
+# File-format: csv
+def test_file_io_write(cognite_client, client_config, data_set_id):
+    data = """name,country,region,numberrange\nBeck Cash,Spain,New South Wales,7\n"""
+    file_metadata = FileMetadata(
+        source="test_int_file_io", mime_type="application/csv", data_set_id=data_set_id, metadata={"type": "raw"}
+    )
+    file_system = CdfFileSystem(connection_config=client_config, file_metadata=file_metadata)
+    with file_system.open("/file_io/test_int_sample_file_01.csv", mode="wb") as write_file:
+        write_file.write(data.encode("utf8"))
+
+    verify_file_status(cognite_client, "test_int_file_io", "test_int_sample_file_01.csv")
+    file_info = cognite_client.files.list(external_id_prefix="test_int_sample_file_01.csv", source="test_int_file_io")
+    assert file_info[0].source == "test_int_file_io"
+    assert file_info[0].directory == "/file_io"
+    assert file_info[0].mime_type == "application/csv"
+    assert file_info[0].metadata["type"] == "raw"
+
+    del file_system
+
+
+# File IO
+# File-format: json
+def test_file_io_write_with_metadata(cognite_client, client_config, data_set_id):
+    file_metadata = FileMetadata(
+        source="test_int_file_io", mime_type="application/json", data_set_id=data_set_id, metadata={"type": "processed"}
+    )
+
+    data = {"name": "Beck Cash", "country": "Spain", "region": "New South Wales", "numberrange": 7}
+    file_system = CdfFileSystem(connection_config=client_config, file_metadata=file_metadata)
+    with file_system.open(
+        "/file_io/test_int_sample_file_02.json", mode="wb", file_metadata=file_metadata
+    ) as write_file:
+        write_file.write(json.dumps(data).encode("utf8"))
+
+    verify_file_status(cognite_client, "test_int_file_io", "test_int_sample_file_02.json")
+
+    file_info = cognite_client.files.list(external_id_prefix="test_int_sample_file_02.json", source="test_int_file_io")
+    assert file_info[0].source == "test_int_file_io"
+    assert file_info[0].directory == "/file_io"
+    assert file_info[0].mime_type == "application/json"
+    assert file_info[0].metadata["type"] == "processed"
+
+    del file_system
+
+
+# File IO
+# File-format: csv,json
+def test_file_io_list(cognite_client, client_config, data_set_id):
+    file_system = CdfFileSystem(connection_config=client_config)
+    file_list = file_system.ls("file_io/")
+    assert file_list == ["file_io/test_int_sample_file_01.csv", "file_io/test_int_sample_file_02.json", "file_io"]
+
+    file_list = file_system.ls("/file_io/")
+    assert file_list == ["file_io/test_int_sample_file_01.csv", "file_io/test_int_sample_file_02.json", "file_io"]
+
+    del file_system
+
+
+# File IO
+# File-format: csv,json
+def test_file_io_list_file(cognite_client, client_config, data_set_id):
+    file_system = CdfFileSystem(connection_config=client_config)
+    file_list = file_system.ls("file_io/test_int_sample_file_01.csv")
+    assert file_list == ["file_io/test_int_sample_file_01.csv"]
+
+    file_list = file_system.ls("/file_io/test_int_sample_file_02.json")
+    assert file_list == ["file_io/test_int_sample_file_02.json"]
+
+    del file_system

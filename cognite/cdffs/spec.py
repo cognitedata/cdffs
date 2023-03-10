@@ -208,9 +208,11 @@ class CdfFileSystem(AbstractFileSystem):
 
             # Get all the files that were previously cached when writing. (if applicable)
             _file_write_cache = {d_info["name"]: True for d_path in self.dircache for d_info in self.dircache[d_path]}
-
             for file_met in self.cognite_client.files.list(**list_query, limit=-1):
-                inp_path = Path(file_met.directory, file_met.external_id)
+                if not file_met.external_id:
+                    # Files are expected to have a valid external id.
+                    continue
+                inp_path = Path(file_met.directory if file_met.directory else "/", file_met.external_id)
                 file_name = str(inp_path).lstrip("/")
                 file_size = int(file_met.metadata.get("size", -1)) if file_met.metadata else -1
                 file_meta = {"type": "file", "name": file_name, "size": file_size}
@@ -257,14 +259,19 @@ class CdfFileSystem(AbstractFileSystem):
         ):
             self._ls(root_dir, external_id_prefix)
 
-        inp_path = path.rstrip("/")
+        inp_path = path.strip("/")
         file_list = self.dircache.get(inp_path, [])
         if not file_list:
+            # It is possible that the requested path is absolute.
+            file_list = [x for x in self.dircache.get(root_dir.strip("/"), []) if x["name"] == inp_path]
+            if file_list:
+                return file_list if detail else [x["name"] for x in file_list]
+
             raise FileNotFoundError
 
         if inp_path not in self.dircache:
             self.dircache[inp_path] = [{"type": "directory", "name": inp_path}]
-        else:
+        elif not [x for x in self.dircache[inp_path] if x["name"] == inp_path]:
             self.dircache[inp_path].append({"type": "directory", "name": inp_path})
 
         return self.dircache[inp_path] if detail else [x["name"] for x in self.dircache[inp_path]]
@@ -563,8 +570,8 @@ class CdfFile(AbstractBufferedFile):
             if final:
                 file_metadata = self.file_metadata.metadata or self.fs.file_metadata.metadata
                 file_metadata = (
-                    dict(self.fs.file_metadata.metadata, **{"size": self.buffer.getbuffer().nbytes})
-                    if self.fs.file_metadata.metadata
+                    dict(file_metadata, **{"size": self.buffer.getbuffer().nbytes})
+                    if file_metadata
                     else {"size": self.buffer.getbuffer().nbytes}
                 )
                 response = self.cognite_client.files.upload_bytes(
