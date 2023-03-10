@@ -373,10 +373,18 @@ def test_file_io_write_with_metadata(cognite_client, client_config, data_set_id)
 def test_file_io_list(cognite_client, client_config, data_set_id):
     file_system = CdfFileSystem(connection_config=client_config)
     file_list = file_system.ls("file_io/")
-    assert file_list == ["file_io/test_int_sample_file_01.csv", "file_io/test_int_sample_file_02.json", "file_io"]
+    assert sorted(file_list) == [
+        "file_io",
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
 
     file_list = file_system.ls("/file_io/")
-    assert file_list == ["file_io/test_int_sample_file_01.csv", "file_io/test_int_sample_file_02.json", "file_io"]
+    assert sorted(file_list) == [
+        "file_io",
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
 
     del file_system
 
