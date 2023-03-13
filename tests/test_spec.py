@@ -372,6 +372,17 @@ def test_split_path_exception(fs, test_input):
             "successful",
         ),
         (
+            False,
+            "/sample_data/out/test.zarr/x",
+            [
+                "sample_data/out/test.zarr/x/.zarray",
+                "sample_data/out/test.zarr/x/.zgroup",
+                "sample_data/out/test.zarr/x/0",
+                "sample_data/out/test.zarr/x",
+            ],
+            "successful",
+        ),
+        (
             True,
             "sample_data/out/test.zarr",
             [
@@ -387,6 +398,17 @@ def test_split_path_exception(fs, test_input):
         (
             True,
             "sample_data/out/test.zarr/x",
+            [
+                {"type": "file", "name": "sample_data/out/test.zarr/x/.zarray", "size": -1},
+                {"type": "file", "name": "sample_data/out/test.zarr/x/.zgroup", "size": -1},
+                {"type": "file", "name": "sample_data/out/test.zarr/x/0", "size": -1},
+                {"type": "directory", "name": "sample_data/out/test.zarr/x"},
+            ],
+            "successful",
+        ),
+        (
+            True,
+            "/sample_data/out/test.zarr/x",
             [
                 {"type": "file", "name": "sample_data/out/test.zarr/x/.zarray", "size": -1},
                 {"type": "file", "name": "sample_data/out/test.zarr/x/.zgroup", "size": -1},

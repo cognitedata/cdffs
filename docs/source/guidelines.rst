@@ -50,3 +50,10 @@ Guidelines
     .. code-block:: python
 
         ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "cache_type": "all"})
+
+* Users can choose to use a file specific metadata when opening a file for write using file-like API. 
+
+    .. code-block:: python
+
+        with fs.open("test_data/test/workfile.csv", mode="wb",file_metadata=FileMetadata(source="test")) as f:
+        f.write("test_data".encode("utf8"))
