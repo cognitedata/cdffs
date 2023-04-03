@@ -1,7 +1,7 @@
 import pytest
 import responses
-from cognite.client import ClientConfig, global_config
-from cognite.client.credentials import APIKey
+from cognite.client import ClientConfig, CogniteClient, global_config
+from cognite.client.credentials import APIKey, OAuthClientCredentials
 from cognite.client.data_classes.files import FileMetadata
 
 from cognite.cdffs.spec import CdfFileSystem
@@ -196,6 +196,21 @@ def mock_files_download_response(request):
             }
             response.add(response.POST, list_url_pattern, status=200, json=list_response_body)
             response.add(response.POST, read_url_pattern, status=400, json=download_url_response_body)
+        yield response
+
+
+@pytest.fixture
+def mock_files_delete_response(request):
+    with responses.RequestsMock() as response:
+        delete_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files/delete"
+        response.assert_all_requests_are_fired = False
+
+        if request.param == "successful":
+            response.add(response.POST, delete_url_pattern, status=200, json={})
+        else:
+            json_response = {"error": {"code": 400, "message": "not found", "missing": [{"id": 1}]}}
+            response.add(response.POST, delete_url_pattern, status=400, json=json_response)
+
         yield response
 
 
@@ -568,10 +583,51 @@ def test_cat(fs, test_path, test_recursive, expected_result):
     assert test_result == expected_result
 
 
+@pytest.mark.parametrize(
+    "test_path, mock_files_delete_response",
+    [
+        (
+            "sample_data/out/sample/df.csv",
+            "successful",
+        ),
+        (
+            "sample_data/out/sample/",
+            "successful",
+        ),
+        (
+            "sample_data/out/sample/",  # Directory delete will be successful always
+            "failed",
+        ),
+    ],
+    indirect=["mock_files_delete_response"],
+)
+@pytest.mark.usefixtures("mock_files_delete_response")
+def test_rm(fs, test_path):
+    fs.rm(test_path)
+
+
+@pytest.mark.usefixtures("mock_set_oauth_credentials")
+def test_oauth_credentials():
+    file_system = CdfFileSystem()
+    assert isinstance(file_system.cognite_client, CogniteClient)
+    assert isinstance(file_system.cognite_client.config.credentials, OAuthClientCredentials)
+    del file_system
+
+
+# def test_token():
+#     file_system = CdfFileSystem()
+#     assert isinstance(file_system.cognite_client, CogniteClient)
+#     assert isinstance(file_system.cognite_client.config.credentials, Token)
+#     del file_system
+
+
 # test exception scenarios
-def test_do_connect_with_inv_args():
+@pytest.mark.usefixtures("mock_unset_env")
+@pytest.mark.parametrize("connection_config", [None, "test"])
+def test_do_connect_with_inv_args(connection_config):
     with pytest.raises(ValueError):
-        CdfFileSystem("test")
+        CdfFileSystem(connection_config)
+        CdfFileSystem(connection_config)
 
 
 def test_initialize_cdf_file_system_with_inv_args():
@@ -651,9 +707,20 @@ def test_cat_empty_path_exception(fs):
         fs.cat("")
 
 
-def test_rm_exception(fs):
-    with pytest.raises(NotImplementedError):
-        fs.rm("/test/")
+@pytest.mark.parametrize(
+    "test_path, mock_files_delete_response",
+    [
+        (
+            "sample_data/out/sample/df.csv",
+            "failed",
+        )
+    ],
+    indirect=["mock_files_delete_response"],
+)
+@pytest.mark.usefixtures("mock_files_delete_response")
+def test_rm_exception(fs, test_path):
+    with pytest.raises(FileNotFoundError):
+        fs.rm(test_path)
 
 
 def test_cd_exception(fs):
