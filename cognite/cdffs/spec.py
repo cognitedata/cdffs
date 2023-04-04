@@ -17,6 +17,7 @@ from fsspec import AbstractFileSystem
 from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 
+from .credentials import get_connection_config
 from .file_handler import FileException, FileHandler
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class CdfFileSystem(AbstractFileSystem):
 
     def __init__(
         self,
-        connection_config: ClientConfig,
+        connection_config: Optional[ClientConfig] = None,
         file_metadata: FileMetadata = FileMetadata(metadata={}),
         **kwargs: Optional[Any],
     ) -> None:
@@ -68,14 +69,14 @@ class CdfFileSystem(AbstractFileSystem):
         if isinstance(file_metadata, FileMetadata):
             self.file_metadata: FileMetadata = file_metadata
         else:
-            raise ValueError("User must provide a valid `file_metadata` in storage_options")
+            raise ValueError("User must provide a valid 'file_metadata' in storage_options")
         self.cdf_list_cache: Dict[str, float] = {}
         self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
         self.file_cache: Dict[str, Dict[str, Any]] = {}
         self.file_handler: FileHandler = FileHandler()
 
         # Create a connection to Cdf
-        self.do_connect(connection_config)
+        self.do_connect(connection_config, **kwargs)
 
     @classmethod
     def _strip_protocol(cls, path: str) -> str:
@@ -90,7 +91,11 @@ class CdfFileSystem(AbstractFileSystem):
         stripped_path = path.replace(f"{cls.protocol}://", "")
         return stripped_path
 
-    def do_connect(self, connection_config: ClientConfig) -> None:
+    def do_connect(
+        self,
+        connection_config: ClientConfig,
+        **kwargs: Optional[Any],
+    ) -> None:
         """Connect to CDF using the connection configurations provided by the user.
 
         Args:
@@ -99,10 +104,16 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             ValueError: When an invalid connection_config is provided.
         """
+        env_file = str(kwargs.get("env_file", ".env"))
         if isinstance(connection_config, ClientConfig):
             self.cognite_client = CogniteClient(connection_config)
+        elif isinstance(conn_config := get_connection_config(env_file), ClientConfig):
+            self.cognite_client = CogniteClient(conn_config)
         else:
-            raise ValueError("User must provide a valid `connection_config` in storage_options")
+            raise ValueError(
+                "User must provide a valid 'connection_config' in storage_options or "
+                "use environment variables to create connection config"
+            )
 
     def _suffix_exists(self, path: str) -> List:
         """Parse the path and verify if the path contains a valid file suffix.
@@ -314,18 +325,21 @@ class CdfFileSystem(AbstractFileSystem):
         """
         self.makedirs(path)
 
-    def rm(self, path: str, recursive: bool = False, maxdepth: Union[int, None] = None) -> None:
-        """Remove the files and directories at a path given.
+    def rm_file(self, path: str) -> None:
+        """Remove the file at a given path.
 
         Args:
-            path (str): Path to use to remove the files and directories.
-            recursive (bool): Flag to recursively delete a directory.
-            maxdepth (Union[int, None]): Maximum depth to traverse and delete if recursive option is used.
+            path (str): Path to use to remove the file.
 
         Raises:
             NotImplementedError: Error as it is not supported.
         """
-        raise NotImplementedError
+        _, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
+        if external_id_prefix:
+            try:
+                self.cognite_client.files.delete(external_id=external_id_prefix)
+            except CogniteNotFoundError as cognite_exp:
+                raise FileNotFoundError from cognite_exp
 
     def mv(
         self,

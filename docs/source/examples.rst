@@ -8,7 +8,7 @@ Few examples with various fsspec supported/compatible python packages are given 
 
 pandas
 ^^^^^^
-Example to read/write `csv` file from/to CDF Files using `pandas` package.
+Example to read/write `csv` file from/to CDF Files using `pandas` package. Environment variables are used to authenticate.
 
 .. literalinclude:: ./../../examples/pandas_csv.py
    :language: python
@@ -31,9 +31,9 @@ geopandas
 ^^^^^^^^^
 Example to read/write `parquet` file from/to CDF Files using `geopandas` package.
 
-Note: `geopandas` package use `pyarrow` to read/write the parquet files from the underlying storage. `pyarrow` has it is 
-own generic file system specification but it is compatible with fsspec. So, We can still make use of cdffs 
-but we need to instantiate a new CdfFileSystem with client config and pass it as filesystem when reading/writing 
+Note: `geopandas` package use `pyarrow` to read/write the parquet files from the underlying storage. `pyarrow` has it is
+own generic file system specification but it is compatible with fsspec. So, We can still make use of cdffs
+but we need to instantiate a new CdfFileSystem with client config and pass it as filesystem when reading/writing
 the files from/to CDF Files.
 
 .. literalinclude:: ./../../examples/geopandas_parquet.py

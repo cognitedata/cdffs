@@ -1,18 +1,17 @@
 Welcome to cognite-cdffs's documentation!
 =========================================
 
-A file-system interface (`cdffs`) to allow users to work with CDF Files using 
-the `fsspec <https://filesystem-spec.readthedocs.io/en/latest/>`_ 
-supported/compatible python packages (`pandas`, `xarray` etc). It builds on top of `cognite-sdk-python <https://cognite-sdk-python.readthedocs-hosted.com/en/latest/index.html>`_
+A file-system interface (`cdffs`) to allow users to work with CDF Files using `fsspec <https://filesystem-spec.readthedocs.io/en/latest/>`_
+supported/compatible python packages (`pandas`, `xarray` etc). `cdffs` uses `cognite-sdk-python <https://cognite-sdk-python.readthedocs-hosted.com/en/latest/index.html>`_ to work with CDF Files.
 
-Refer `fsspec documentation <https://filesystem-spec.readthedocs.io/en/latest/#who-uses-fsspec>`_ to get 
+Refer `fsspec documentation <https://filesystem-spec.readthedocs.io/en/latest/#who-uses-fsspec>`_ to get
 the list of all supported/compatible python packages.
 
 Installation
 ^^^^^^^^^^^^
 To install this package:
 
-.. code-block:: bash
+  .. code-block:: bash
 
    pip install cognite-cdffs
 
@@ -20,54 +19,37 @@ To install this package:
 Quickstart
 ^^^^^^^^^^
 
-Three important steps to follow when working with CDF Files using the fsspec supported python packages.
+Important steps to follow when working with CDF Files using the ``fsspec`` supported python packages.
 
-1. Import cdffs package
+1. Import ``cdffs`` package
 
-.. code-block:: python
+  .. code-block:: python
 
     from cognite import cdffs
 
-2. Create a client config to connect with CDF. Refer `ClientConfig <https://cognite-sdk-python.readthedocs-hosted.com
-/en/latest/cognite.html#cognite.client.config.ClientConfig>`_ from Cognite Python SDK documentation on how 
-to create a client config.
+2. Follow instructions from :ref:`authentication` to authenticate.
 
-Example using oauth credentials.
+3. Read/write the files to CDF using ``fsspec`` supported packages.
 
-.. code-block:: python 
+  Read `zarr` files using using `xarray`. (`Environment variables are used to authenticate`)
 
-    # Get TOKEN_URL, CLIENT_ID, CLIENT_SECRET, COGNITE_PROJECT, 
-    # CDF_CLUSTER, SCOPES from environment variables.
+  .. code-block:: python
 
-    oauth_creds = OAuthClientCredentials(
-        token_url=TOKEN_URL, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, scopes=SCOPES
-    )
-    client_cnf = ClientConfig(
-        client_name="cdf-client",
-        base_url=f"https://{CDF_CLUSTER}.cognitedata.com",
-        project=COGNITE_PROJECT,
-        credentials=oauth_creds,
-        timeout=60,
-    )
+    ds = xarray.open_zarr("cdffs://sample_data/test.zarr")
 
-3. Pass the client config as :code:`connection_config` in :code:`storage_options` when reading/writing the files.
+  Write `zarr` files using `xarray`.
 
-   Read `zarr` files using using `xarray`.
+  .. code-block:: python
 
-   .. code-block:: python
+    metadata = FileMetadata(source="sample", data_set_id=1234567890)
+    ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"file_metadata": metadata})
 
-      ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf})
-
-   Write `zarr` files using `xarray`.
-
-   .. code-block:: python
-
-      ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "file_metadata": metadata})
 
 Contents
 ^^^^^^^^
 .. toctree::
    cdffs.rst
+   authentication.rst
    guidelines.rst
    examples.rst
    api.rst

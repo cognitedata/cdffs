@@ -400,3 +400,28 @@ def test_file_io_list_file(cognite_client, client_config, data_set_id):
     assert file_list == ["file_io/test_int_sample_file_02.json"]
 
     del file_system
+
+
+# File IO
+# File-format: csv,json
+def test_file_io_rm_file(cognite_client, client_config, data_set_id):
+    file_metadata = FileMetadata(
+        source="test_int_file_io", mime_type="application/json", data_set_id=data_set_id, metadata={"type": "processed"}
+    )
+    file_system = CdfFileSystem(connection_config=client_config, file_metadata=file_metadata)
+    data = {"name": "Beck Cash", "country": "Spain", "region": "New South Wales", "numberrange": 7}
+    with file_system.open(
+        "/file_io/test_int_sample_file_03.json", mode="wb", file_metadata=file_metadata
+    ) as write_file:
+        write_file.write(json.dumps(data).encode("utf8"))
+
+    verify_file_status(cognite_client, "test_int_file_io", "test_int_sample_file_03.json")
+
+    # Remove file
+    file_system.rm("file_io/test_int_sample_file_03.json")
+
+    # List file
+    with pytest.raises(FileNotFoundError):
+        file_system.rm("file_io/test_int_sample_file_03.json")
+
+    del file_system
