@@ -1,7 +1,9 @@
+import os
+
 import pytest
 import responses
 from cognite.client import ClientConfig, CogniteClient, global_config
-from cognite.client.credentials import APIKey, OAuthClientCredentials
+from cognite.client.credentials import APIKey, OAuthClientCredentials, Token
 from cognite.client.data_classes.files import FileMetadata
 
 from cognite.cdffs.spec import CdfFileSystem
@@ -10,7 +12,7 @@ global_config.disable_pypi_version_check = True
 
 
 @pytest.mark.usefixtures("mock_cognite_client")
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="function")
 def fs():
     inp = {
         "connection_config": ClientConfig(
@@ -606,23 +608,44 @@ def test_rm(fs, test_path):
     fs.rm(test_path)
 
 
-@pytest.mark.usefixtures("mock_set_oauth_credentials")
-def test_oauth_credentials():
-    file_system = CdfFileSystem()
-    assert isinstance(file_system.cognite_client, CogniteClient)
-    assert isinstance(file_system.cognite_client.config.credentials, OAuthClientCredentials)
-    del file_system
+@pytest.fixture(scope="function")
+def oauth_fs(monkeypatch):
+    monkeypatch.setitem(os.environ, "TOKEN_URL", "https://foobar/oauth2/token")
+    monkeypatch.setitem(os.environ, "CLIENT_ID", "a5aaa16b-ccca-461f-b55d-91af56aa84de")
+    monkeypatch.setitem(os.environ, "CLIENT_SECRET", "a5aaa16b-ccca-461f-b55d-91af56aa84de")
+    monkeypatch.setitem(os.environ, "COGNITE_PROJECT", "foobar")
+    monkeypatch.setitem(os.environ, "CDF_CLUSTER", "foobar")
+    monkeypatch.setitem(os.environ, "SCOPES", "https://foobar.cognitedata.com/.default")
+    return CdfFileSystem("dummy-oauth-connection-config")
 
 
-# def test_token():
-#     file_system = CdfFileSystem()
-#     assert isinstance(file_system.cognite_client, CogniteClient)
-#     assert isinstance(file_system.cognite_client.config.credentials, Token)
-#     del file_system
+def test_oauth_credentials(oauth_fs):
+    assert isinstance(oauth_fs.cognite_client, CogniteClient)
+    assert isinstance(oauth_fs.cognite_client.config.credentials, OAuthClientCredentials)
+
+
+@pytest.fixture(scope="function")
+def token_fs(monkeypatch):
+    monkeypatch.setitem(
+        os.environ, "TOKEN", "54129bff-fdd8-498a-9edd-b0538ba5248454129bff-fdd8-498a-9edd-b0538ba5248454129bff-fdd8"
+    )
+    monkeypatch.setitem(os.environ, "COGNITE_PROJECT", "foobar")
+    monkeypatch.setitem(os.environ, "CDF_CLUSTER", "foobar")
+    return CdfFileSystem("dummy-token-connection-config")
+
+
+def test_token(token_fs):
+    assert isinstance(token_fs.cognite_client, CogniteClient)
+    assert isinstance(token_fs.cognite_client.config.credentials, Token)
+
+
+@pytest.fixture(scope="function")
+def unset_fs(monkeypatch):
+    monkeypatch.setitem(os.environ, "TOKEN", "")
+    return CdfFileSystem("dummy-unset-connection-config")
 
 
 # test exception scenarios
-@pytest.mark.usefixtures("mock_unset_env")
 @pytest.mark.parametrize("connection_config", [None, "test"])
 def test_do_connect_with_inv_args(connection_config):
     with pytest.raises(ValueError):
