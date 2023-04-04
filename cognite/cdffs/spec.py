@@ -69,7 +69,7 @@ class CdfFileSystem(AbstractFileSystem):
         if isinstance(file_metadata, FileMetadata):
             self.file_metadata: FileMetadata = file_metadata
         else:
-            raise ValueError("User must provide a valid `file_metadata` in storage_options")
+            raise ValueError("User must provide a valid 'file_metadata' in storage_options")
         self.cdf_list_cache: Dict[str, float] = {}
         self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
         self.file_cache: Dict[str, Dict[str, Any]] = {}
@@ -111,7 +111,7 @@ class CdfFileSystem(AbstractFileSystem):
             self.cognite_client = CogniteClient(conn_config)
         else:
             raise ValueError(
-                "User must provide a valid `connection_config` in storage_options or "
+                "User must provide a valid 'connection_config' in storage_options or "
                 "use environment variables to create connection config"
             )
 

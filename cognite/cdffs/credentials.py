@@ -74,7 +74,7 @@ class FsOAuthCredentials(FsCredentials, FsConfig):
     scopes: Optional[str] = None
 
     # Validator
-    scope = validator("scopes", always=True, allow_reuse=True)(validate_scopes)
+    validator("scopes", always=True, allow_reuse=True)(validate_scopes)
 
     def get_credentials(self) -> OAuthClientCredentials:
         """Construct credentials based on environment variables.

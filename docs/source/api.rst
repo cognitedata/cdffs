@@ -20,3 +20,20 @@ API
 
 .. autoclass:: cognite.cdffs.file_handler.FileHandler
    :members:
+
+.. currentmodule:: cognite.cdffs.credentials
+
+.. autosummary::
+   cognite.cdffs.credentials.FsCredentials
+   cognite.cdffs.credentials.FsOAuthCredentials
+   cognite.cdffs.credentials.FsToken
+   cognite.cdffs.credentials.get_connection_config
+
+.. autoclass:: cognite.cdffs.credentials.FsCredentials
+   :members:
+
+.. autoclass:: cognite.cdffs.credentials.FsOAuthCredentials
+   :members:
+
+.. autoclass:: cognite.cdffs.credentials.FsToken
+   :members:
