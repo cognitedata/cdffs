@@ -18,7 +18,7 @@ Refer [fsspec documentation](https://filesystem-spec.readthedocs.io/en/latest/#w
 
 ## Installation
 
-`cdffs` is available on PyPI. Install using, 
+`cdffs` is available on PyPI. Install using,
 
 ```shell
 pip install cognite-cdffs
@@ -26,41 +26,26 @@ pip install cognite-cdffs
 
 ## Usage
 
-Three important steps to follow when working with CDF Files using the fsspec supported python packages. 
+Important steps to follow when working with CDF Files using the `fsspec` supported python packages.
 
 1) Import `cdffs` package
 ```python
-  from cognite import cdffs
+  from cognite import cdffs  # noqa
 ```
 
-2) Create a client config to connect with CDF. Refer [ClientConfig](https://cognite-sdk-python.readthedocs-hosted.com/en/latest/cognite.html#cognite.client.config.ClientConfig) from Cognite Python SDK documentation on how to create a client config.
+2) Follow instructions from [Authentication](https://cdffs.readthedocs.io/en/latest/authentication.html) to authenticate.
 
-```python
-  # Get TOKEN_URL, CLIENT_ID, CLIENT_SECRET, COGNITE_PROJECT, 
-  # CDF_CLUSTER, SCOPES from environment variables.
-
-  oauth_creds = OAuthClientCredentials(
-    token_url=TOKEN_URL, client_id=CLIENT_ID, client_secret=CLIENT_SECRET, scopes=SCOPES
-  )
-  client_cnf = ClientConfig(
-    client_name="cdf-client",
-    base_url=f"https://{CDF_CLUSTER}.cognitedata.com",
-    project=COGNITE_PROJECT,
-    credentials=oauth_creds
-  )
-```
-
-3) Pass the client config as `connection_config` in `storage_options` when reading/writing the files.
+3) Read/write the files from/to CDF using `fsspec` supported packages. Example,
 
     * Read `zarr` files using using `xarray`.
 
     ```python
-    ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf})
+    ds = xarray.open_zarr("cdffs://sample_data/test.zarr")
     ```
     * Write `zarr` files using `xarray`.
-    
+
     ```python
-    ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "file_metadata": metadata})
+    ds.to_zarr("cdffs://sample_data/test.zarr", storage_options={"file_metadata": metadata})
     ```
 
 Refer [cdffs.readthedocs.io](https://cdffs.readthedocs.io) for more details.
