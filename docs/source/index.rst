@@ -29,7 +29,7 @@ Important steps to follow when working with CDF Files using the ``fsspec`` suppo
 
 2. Follow instructions from :ref:`authentication` to authenticate.
 
-3. Read/write the files to CDF using ``fsspec`` supported packages.
+3. Read/write the files from/to CDF using ``fsspec`` supported packages.
 
   Read `zarr` files using using `xarray`. (`Environment variables are used to authenticate`)
 
