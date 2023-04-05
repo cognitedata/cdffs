@@ -7,7 +7,7 @@ from cognite.client.credentials import OAuthClientCredentials, Token
 from pydantic import BaseSettings, SecretStr, validator
 
 
-def validate_scopes(value: str) -> Optional[List]:
+def validate_scopes(cls: Any, value: str) -> Optional[List]:
     """Validate scopes and reformat them to a list."""
     if value:
         return value.split(",")
@@ -74,7 +74,7 @@ class FsOAuthCredentials(FsCredentials, FsConfig):
     scopes: Optional[str] = None
 
     # Validator
-    validator("scopes", always=True, allow_reuse=True)(validate_scopes)
+    _scopes = validator("scopes", always=True, allow_reuse=True)(validate_scopes)
 
     def get_credentials(self) -> OAuthClientCredentials:
         """Construct credentials based on environment variables.
