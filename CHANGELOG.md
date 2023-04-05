@@ -69,4 +69,12 @@ Changes are grouped as follows
 - Poetry version upgrade
 
 
+## [0.2.1] - 2023-04-05
+
+### Fixed
+- Bug fixes on documentation.
+- Bug fixes on Authentication.
+- Dependency updates for docs
+- Poetry version upgrade
+
 [unreleased]:
