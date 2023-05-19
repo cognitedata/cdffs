@@ -1357,7 +1357,7 @@ python-versions = "*"
 
 [[package]]
 name = "xarray"
-version = "2023.3.0"
+version = "2023.5.0"
 description = "N-D labeled arrays and datasets in Python"
 category = "dev"
 optional = false
@@ -1366,13 +1366,13 @@ python-versions = ">=3.9"
 [package.dependencies]
 numpy = ">=1.21"
 packaging = ">=21.3"
-pandas = ">=1.4,<2"
+pandas = ">=1.4"
 
 [package.extras]
 accel = ["bottleneck", "flox", "numbagg", "scipy"]
-complete = ["bottleneck", "cfgrib", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "matplotlib", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "rasterio", "scipy", "seaborn", "zarr"]
-docs = ["bottleneck", "cfgrib", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "ipykernel", "ipython", "jupyter-client", "matplotlib", "nbsphinx", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "rasterio", "scanpydoc", "scipy", "seaborn", "sphinx-autosummary-accessors", "sphinx-rtd-theme", "zarr"]
-io = ["cfgrib", "cftime", "fsspec", "h5netcdf", "netCDF4", "pooch", "pydap", "rasterio", "scipy", "zarr"]
+complete = ["bottleneck", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "matplotlib", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "scipy", "seaborn", "zarr"]
+docs = ["bottleneck", "cftime", "dask[complete]", "flox", "fsspec", "h5netcdf", "ipykernel", "ipython", "jupyter-client", "matplotlib", "nbsphinx", "nc-time-axis", "netCDF4", "numbagg", "pooch", "pydap", "scanpydoc", "scipy", "seaborn", "sphinx-autosummary-accessors", "sphinx-rtd-theme", "zarr"]
+io = ["cftime", "fsspec", "h5netcdf", "netCDF4", "pooch", "pydap", "scipy", "zarr"]
 parallel = ["dask[complete]"]
 viz = ["matplotlib", "nc-time-axis", "seaborn"]
 
@@ -2369,8 +2369,8 @@ webencodings = [
     {file = "webencodings-0.5.1.tar.gz", hash = "sha256:b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923"},
 ]
 xarray = [
-    {file = "xarray-2023.3.0-py3-none-any.whl", hash = "sha256:64b2a25338cff4f632a5d2ba66ffb875e9ce3ced68cefb5bb5736195bd28cff0"},
-    {file = "xarray-2023.3.0.tar.gz", hash = "sha256:f05c74b60b072e6919ef2ae9cf3c67a46173da585ca5912808118ab0c61b2cca"},
+    {file = "xarray-2023.5.0-py3-none-any.whl", hash = "sha256:b62f19bb04e68f684a92a8a458c63c91cf76e6fabe54cf4438f7e2ca56348854"},
+    {file = "xarray-2023.5.0.tar.gz", hash = "sha256:318a651f4182b9cecb7d1c57ad0ed9bdaed5f49c43dbb638c0a845b8faf405e8"},
 ]
 zarr = [
     {file = "zarr-2.14.2-py3-none-any.whl", hash = "sha256:feb72d6ccc43c447661861020dbf2e685a8367e80d890b6f5905954400394ed2"},
