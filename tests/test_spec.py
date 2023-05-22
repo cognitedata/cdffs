@@ -3,7 +3,7 @@ import os
 import pytest
 import responses
 from cognite.client import ClientConfig, CogniteClient, global_config
-from cognite.client.credentials import APIKey, OAuthClientCredentials, Token
+from cognite.client.credentials import OAuthClientCredentials, Token
 from cognite.client.data_classes.files import FileMetadata
 
 from cognite.cdffs.spec import CdfFileSystem
@@ -19,7 +19,7 @@ def fs():
             client_name="foobar",
             base_url="https://foobar.cognitedata.com",
             project="foobar",
-            credentials=APIKey("dummy-secret"),
+            credentials=Token("dummy-token"),
         )
     }
     fs = CdfFileSystem(**inp)
@@ -659,7 +659,7 @@ def test_initialize_cdf_file_system_with_inv_args():
             client_name="foobar-foobar",
             base_url="https://foobar-foobar.cognitedata.com",
             project="foobar-foobar",
-            credentials=APIKey("dummy-secret"),
+            credentials=Token("dummy-token"),
             timeout=1,
         )
     }
