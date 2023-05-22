@@ -10,7 +10,7 @@ packages = [
 ]
 [tool.poetry.group.test.dependencies]
 pandas = "^1.5.1"
-geopandas = "^0.12.1"
+geopandas = "^0.13.0"
 pyarrow = "^11.0.0"
 zarr = "^2.13.3"
 dask = "^2023.5.0"

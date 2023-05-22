@@ -391,18 +391,18 @@ tqdm = ["tqdm"]
 
 [[package]]
 name = "geopandas"
-version = "0.12.2"
+version = "0.13.0"
 description = "Geographic pandas extensions"
 category = "dev"
 optional = false
 python-versions = ">=3.8"
 
 [package.dependencies]
-fiona = ">=1.8"
+fiona = ">=1.8.19"
 packaging = "*"
-pandas = ">=1.0.0"
-pyproj = ">=2.6.1.post1"
-shapely = ">=1.7"
+pandas = ">=1.1.0"
+pyproj = ">=3.0.1"
+shapely = ">=1.7.1"
 
 [[package]]
 name = "identify"
@@ -1404,7 +1404,7 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9.10"
-content-hash = "c42fc22b6515389ca24c64e57552da5c1fa45081f09d4868b1c062913b8f69bb"
+content-hash = "506e9fd4847623b95ca8d876a7aae61e7025541450ef38e2187f99e2dc2a85c1"
 
 [metadata.files]
 alabaster = [
@@ -1764,8 +1764,8 @@ fsspec = [
     {file = "fsspec-2023.5.0.tar.gz", hash = "sha256:b3b56e00fb93ea321bc9e5d9cf6f8522a0198b20eb24e02774d329e9c6fb84ce"},
 ]
 geopandas = [
-    {file = "geopandas-0.12.2-py3-none-any.whl", hash = "sha256:0a470e4bf6f5367e6fd83ab6b40405e0b805c8174665bbcb7c4077ed90202912"},
-    {file = "geopandas-0.12.2.tar.gz", hash = "sha256:0acdacddefa176525e4da6d9aeeece225da26055c4becdc6e97cf40fa97c27f4"},
+    {file = "geopandas-0.13.0-py3-none-any.whl", hash = "sha256:2a5d7f2dfa46c6679ca2d2358b49420be08bab31a7882b500bdb2ae8be40603a"},
+    {file = "geopandas-0.13.0.tar.gz", hash = "sha256:330b5a3faf8062efc6f424bf339f6e88f835b846027b48241d37da9b7c7b2485"},
 ]
 identify = [
     {file = "identify-2.5.24-py2.py3-none-any.whl", hash = "sha256:986dbfb38b1140e763e413e6feb44cd731faf72d1909543178aa79b0e258265d"},
