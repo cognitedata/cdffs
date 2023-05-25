@@ -78,3 +78,18 @@ Changes are grouped as follows
 - Poetry version upgrade
 
 [unreleased]:
+
+## [0.2.2] - 2023-05-22
+
+### Fixed
+- Dependency updates for docs & source code.
+
+[unreleased]:
+
+## [0.2.3] - 2023-05-25
+
+### Fixed
+- Dependency updates for docs & source code.
+- Security fixes for requests package.
+
+[unreleased]:
