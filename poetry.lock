@@ -391,7 +391,7 @@ tqdm = ["tqdm"]
 
 [[package]]
 name = "geopandas"
-version = "0.13.0"
+version = "0.13.2"
 description = "Geographic pandas extensions"
 category = "dev"
 optional = false
@@ -1764,8 +1764,8 @@ fsspec = [
     {file = "fsspec-2023.5.0.tar.gz", hash = "sha256:b3b56e00fb93ea321bc9e5d9cf6f8522a0198b20eb24e02774d329e9c6fb84ce"},
 ]
 geopandas = [
-    {file = "geopandas-0.13.0-py3-none-any.whl", hash = "sha256:2a5d7f2dfa46c6679ca2d2358b49420be08bab31a7882b500bdb2ae8be40603a"},
-    {file = "geopandas-0.13.0.tar.gz", hash = "sha256:330b5a3faf8062efc6f424bf339f6e88f835b846027b48241d37da9b7c7b2485"},
+    {file = "geopandas-0.13.2-py3-none-any.whl", hash = "sha256:101cfd0de54bcf9e287a55b5ea17ebe0db53a5e25a28bacf100143d0507cabd9"},
+    {file = "geopandas-0.13.2.tar.gz", hash = "sha256:e5b56d9c20800c77bcc0c914db3f27447a37b23b2cd892be543f5001a694a968"},
 ]
 identify = [
     {file = "identify-2.5.24-py2.py3-none-any.whl", hash = "sha256:986dbfb38b1140e763e413e6feb44cd731faf72d1909543178aa79b0e258265d"},
