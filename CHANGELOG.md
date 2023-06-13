@@ -93,3 +93,13 @@ Changes are grouped as follows
 - Security fixes for requests package.
 
 [unreleased]:
+
+## [0.2.4] - 2023-06-13
+
+### Fixed
+- Added `exists` method to check if a file exists in CDF.
+- Added `rm_files` method to delete a list of files from CDF.
+- Added capability to allow users to configure download retry parameters.
+- Dependency updates for docs & source code.
+
+[unreleased]:
