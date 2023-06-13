@@ -1,3 +1,5 @@
+# type: ignore
+# pylint: disable=missing-function-docstring
 import os
 
 import pytest
@@ -212,6 +214,34 @@ def mock_files_delete_response(request):
         else:
             json_response = {"error": {"code": 400, "message": "not found", "missing": [{"id": 1}]}}
             response.add(response.POST, delete_url_pattern, status=400, json=json_response)
+
+        yield response
+
+
+@pytest.fixture
+def mock_files_byids_response(request):
+    with responses.RequestsMock() as response:
+        byids_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files/byids"
+        response.assert_all_requests_are_fired = False
+
+        if request.param == "successful":
+            response.add(
+                response.POST,
+                byids_url_pattern,
+                status=200,
+                json={
+                    "items": [
+                        {
+                            "externalId": "df.csv",
+                            "name": "df.csv",
+                            "directory": "/sample_data/out/sample/",
+                        },
+                    ]
+                },
+            )
+        else:
+            json_response = {"error": {"code": 400, "message": "not found", "missing": [{"id": 1}]}}
+            response.add(response.POST, byids_url_pattern, status=400, json=json_response)
 
         yield response
 
@@ -608,6 +638,52 @@ def test_rm(fs, test_path):
     fs.rm(test_path)
 
 
+@pytest.mark.parametrize(
+    "test_path, mock_files_delete_response",
+    [
+        (
+            ["sample_data/out/sample/df.csv", "sample_data/out/sample/df2.csv", "sample_data/out/sample/df3.csv"],
+            "successful",
+        ),
+        (
+            ["sample_data/out/sample1/", "sample_data/out/sample2/", "sample_data/out/sample3/"],
+            "successful",
+        ),
+        (
+            ["sample_data/out/sample/", "sample_data/out/sample2/"],  # Directory delete will be successful always
+            "failed",
+        ),
+    ],
+    indirect=["mock_files_delete_response"],
+)
+@pytest.mark.usefixtures("mock_files_delete_response")
+def test_rm_files(fs, test_path):
+    fs.rm_files(test_path)
+
+
+@pytest.mark.parametrize(
+    "test_path, mock_files_byids_response",
+    [
+        (
+            "sample_data/out/sample/df.csv",
+            "successful",
+        ),
+        (
+            "sample_data/out/sample/df.csv",
+            "failed",
+        ),
+        (
+            "sample_data/out/sample/",  # Directory delete will be failed.
+            "successful",
+        ),
+    ],
+    indirect=["mock_files_byids_response"],
+)
+@pytest.mark.usefixtures("mock_files_byids_response")
+def test_exists(fs, test_path):
+    fs.exists(test_path)
+
+
 @pytest.fixture(scope="function")
 def oauth_fs(monkeypatch):
     monkeypatch.setitem(os.environ, "TOKEN_URL", "https://foobar/oauth2/token")
@@ -649,7 +725,6 @@ def unset_fs(monkeypatch):
 @pytest.mark.parametrize("connection_config", [None, "test"])
 def test_do_connect_with_inv_args(connection_config):
     with pytest.raises(ValueError):
-        CdfFileSystem(connection_config)
         CdfFileSystem(connection_config)
 
 
@@ -754,3 +829,72 @@ def test_cd_exception(fs):
 def test_mv_exception(fs):
     with pytest.raises(NotImplementedError):
         fs.mv("/test/", "/test2/")
+
+
+@pytest.mark.parametrize(
+    "test_path, test_out_length, mock_files_download_response",
+    [
+        (
+            "sample_data/out/sample/df.csv",
+            -1,
+            "failure-file-not-ready",
+        ),
+        (
+            "sample_data/out/sample/df.csv",
+            -1,
+            "failure-file-missing",
+        ),
+    ],
+    indirect=["mock_files_download_response"],
+)
+@pytest.mark.usefixtures("mock_files_download_response")
+def test_open_read_exception_without_retry(test_path, test_out_length):
+    inp = {
+        "connection_config": ClientConfig(
+            client_name="foobar",
+            base_url="https://foobar.cognitedata.com",
+            project="foobar",
+            credentials=Token("dummy-token"),
+        ),
+        "download_retries": False,
+    }
+    fs = CdfFileSystem(**inp)
+    fs.file_metadata = FileMetadata(metadata={})
+    with pytest.raises(FileNotFoundError):
+        cdf_file = fs.open(test_path, mode="rb")
+        cdf_file.read(length=test_out_length)
+
+
+@pytest.mark.parametrize(
+    "test_path, test_out_length, mock_files_download_response",
+    [
+        (
+            "sample_data/out/sample/df.csv",
+            -1,
+            "failure-file-not-ready",
+        ),
+        (
+            "sample_data/out/sample/df.csv",
+            -1,
+            "failure-file-missing",
+        ),
+    ],
+    indirect=["mock_files_download_response"],
+)
+@pytest.mark.usefixtures("mock_files_download_response")
+def test_open_read_exception_with_retry(test_path, test_out_length):
+    inp = {
+        "connection_config": ClientConfig(
+            client_name="foobar",
+            base_url="https://foobar.cognitedata.com",
+            project="foobar",
+            credentials=Token("dummy-token"),
+        ),
+        "download_retries": True,
+        "max_download_retries": 2,
+    }
+    fs = CdfFileSystem(**inp)
+    fs.file_metadata = FileMetadata(metadata={})
+    with pytest.raises(FileNotFoundError):
+        cdf_file = fs.open(test_path, mode="rb")
+        cdf_file.read(length=test_out_length)

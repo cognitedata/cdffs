@@ -38,6 +38,8 @@ class CdfFileSystem(AbstractFileSystem):
         file_metadata (FileMetadata): File Metadata that a user can use when reading/writing the files to CDF.
         file_cache (Dict): Cache the contents of the files.
         file_handler (FileHandler): File handler to manage the requests to a cloud storage.
+        max_download_retries (int): Maximum number of download retries allowed before exhausting.
+        download_retries (bool): Flag to indicate enable/disable download retries.
     """
 
     protocol: str = "cdffs"
@@ -72,6 +74,8 @@ class CdfFileSystem(AbstractFileSystem):
             raise ValueError("User must provide a valid 'file_metadata' in storage_options")
         self.cdf_list_cache: Dict[str, float] = {}
         self.cdf_list_expiry_time: int = kwargs.get("cdf_list_expiry_time", 60)  # type: ignore
+        self.max_download_retries: int = kwargs.get("max_download_retries", 5)  # type: ignore
+        self.download_retries: bool = kwargs.get("download_retries", True)  # type: ignore
         self.file_cache: Dict[str, Dict[str, Any]] = {}
         self.file_handler: FileHandler = FileHandler()
 
@@ -332,7 +336,7 @@ class CdfFileSystem(AbstractFileSystem):
             path (str): Path to use to remove the file.
 
         Raises:
-            NotImplementedError: Error as it is not supported.
+            FileNotFoundError: When a file is not found.
         """
         _, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
         if external_id_prefix:
@@ -340,6 +344,41 @@ class CdfFileSystem(AbstractFileSystem):
                 self.cognite_client.files.delete(external_id=external_id_prefix)
             except CogniteNotFoundError as cognite_exp:
                 raise FileNotFoundError from cognite_exp
+
+    def rm_files(self, paths: List) -> None:
+        """Remove the list of files.
+
+        Args:
+            paths (List): List of files to remove.
+
+        Raises:
+            FileNotFoundError: When a file is not found.
+        """
+        validated_external_ids = []
+        # Validate the external ids before attempting to remove them
+        for path in paths:
+            _, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
+            if external_id_prefix:
+                validated_external_ids.append(external_id_prefix)
+
+        # Delete only if the external ids are valid.
+        if validated_external_ids:
+            try:
+                self.cognite_client.files.delete(external_id=validated_external_ids)
+            except CogniteNotFoundError as cognite_exp:
+                raise FileNotFoundError from cognite_exp
+
+    def exists(self, path: str) -> bool:
+        """Check if the file exists at the given path.
+
+        Args:
+            path (str): Absolute path to check.
+
+        Returns:
+            bool: True/False to indicate if the file exists.
+        """
+        _, _, external_id = self.split_path(path, validate_suffix=False)
+        return bool(self.cognite_client.files.retrieve(external_id=external_id)) if external_id else False
 
     def mv(
         self,
@@ -428,7 +467,6 @@ class CdfFileSystem(AbstractFileSystem):
         """
         _download_retries = 0
         _retry_wait_seconds = 0.5
-        _download_max_retries = 5
         while True:
             try:
                 if not (download_url := self.file_handler.get_url(external_id)):
@@ -439,7 +477,7 @@ class CdfFileSystem(AbstractFileSystem):
                 return self.file_handler.download_file(download_url, start_byte, end_byte)
 
             except (CogniteAPIError, FileException) as cognite_exp:
-                if _download_retries < _download_max_retries:
+                if self.download_retries and _download_retries < self.max_download_retries:
                     _download_retries += 1
                     time.sleep(_retry_wait_seconds)
                     _retry_wait_seconds *= 2
@@ -629,4 +667,5 @@ class CdfFile(AbstractBufferedFile):
             file_contents = cache._fetch(start, end)
         else:
             file_contents = self.fs.read_file(self.external_id, start_byte=start, end_byte=end)
+
         return file_contents
