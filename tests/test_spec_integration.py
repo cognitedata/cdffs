@@ -1,8 +1,12 @@
+# type: ignore
+# pylint: disable=missing-function-docstring
+
 import json
 import os
 import time
 
 import dask.dataframe as dd
+import geodatasets
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -301,7 +305,7 @@ def test_dask_parquet_multiple_file(cognite_client, client_config, data_set_id):
 # File-format: parquet
 def test_geopandas_parquet(cognite_client, client_config, data_set_id):
     """Test read/write operations using geopandas."""
-    inp_df = gpd.GeoDataFrame.from_file(gpd.datasets.get_path("nybb"))
+    inp_df = gpd.GeoDataFrame.from_file(geodatasets.get_path("nybb"))
     file_metadata = FileMetadata(
         source="test_int_geopandas_parquet", mime_type="application/octet-stream", data_set_id=data_set_id
     )
