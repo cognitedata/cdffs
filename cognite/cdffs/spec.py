@@ -200,7 +200,30 @@ class CdfFileSystem(AbstractFileSystem):
             else:
                 self.dircache[parent_path].append(dir_val)
 
-    def _ls(self, root_dir: str, external_id_prefix: str) -> None:
+    def _invalidate_dircache(self, inp_path: str) -> None:
+        # Comments about why we need to invalidate the cache.
+        # Invalidating a cache will allow the subsequent requests to hit cdf to get the list of files instead of serving
+        # them from cache as user may use different limit values for each request.
+        # Caching the results with limit will lead to produce incorrect file list to the user.
+        # Possible scenarios.
+        #    Scenario #1
+        #       User may call `ls` method with no limits at first. We will cache the results.
+        #       User may call `ls` method with no limits at first. Results will be returned from the cache.
+        #    Scenario #2
+        #       User may call `ls` method with no limits at first. We will cache the results.
+        #       User may call `ls` method with limit. Cdf will be queried to get the results.
+        #           Cache will be invalidated at this point. Any subsequent queries will hit cdf.
+        #    Scenario #3
+        #       User may call `ls` method with limit at first. We don't cache the results.
+        #           Cache will be invalidated at this point. Any subsequent queries will hit cdf.
+        #       User may call `ls` method with limit. Cdf will still be queried to get the results.
+        #           Cache will be invalidated at this point. Any subsequent queries will hit cdf.
+        #       User may call `ls` method with no limits. We will cache the results.
+        #           Any subsequent queries will be served from cache.
+        if inp_path in self.dircache:
+            del self.dircache[inp_path]
+
+    def _ls(self, root_dir: str, external_id_prefix: str, limit: int = -1) -> None:
         """List the files based on the directory & external Id prefixes extracted from path.
 
         Args:
@@ -223,7 +246,7 @@ class CdfFileSystem(AbstractFileSystem):
 
             # Get all the files that were previously cached when writing. (if applicable)
             _file_write_cache = {d_info["name"]: True for d_path in self.dircache for d_info in self.dircache[d_path]}
-            for file_met in self.cognite_client.files.list(**list_query, limit=-1):
+            for file_met in self.cognite_client.files.list(**list_query, limit=limit):
                 if not file_met.external_id:
                     # Files are expected to have a valid external id.
                     continue
@@ -266,19 +289,26 @@ class CdfFileSystem(AbstractFileSystem):
             FileNotFoundError: When there are no files matching the path given.
         """
         root_dir, external_id_prefix, _ = self.split_path(path, validate_suffix=False)
+
+        # Invalidating cache when limit is used.
+        if (limit := kwargs.get("limit", -1)) != -1:
+            self._invalidate_dircache(root_dir.strip("/"))
+            self._invalidate_dircache(path.strip("/"))
+
         inp_key = str(Path(root_dir, external_id_prefix)).lstrip("/")
-        if not (
+        if limit != -1 or not (
             inp_key in self.dircache
             and inp_key in self.cdf_list_cache
             and time.time() - self.cdf_list_cache[inp_key] < self.cdf_list_expiry_time
         ):
-            self._ls(root_dir, external_id_prefix)
+            self._ls(root_dir, external_id_prefix, limit=limit)  # type: ignore
 
         inp_path = path.strip("/")
         file_list = self.dircache.get(inp_path, [])
         if not file_list:
             # It is possible that the requested path is absolute.
             file_list = [x for x in self.dircache.get(root_dir.strip("/"), []) if x["name"] == inp_path]
+
             if file_list:
                 return file_list if detail else [x["name"] for x in file_list]
 
@@ -289,7 +319,13 @@ class CdfFileSystem(AbstractFileSystem):
         elif not [x for x in self.dircache[inp_path] if x["name"] == inp_path]:
             self.dircache[inp_path].append({"type": "directory", "name": inp_path})
 
-        return self.dircache[inp_path] if detail else [x["name"] for x in self.dircache[inp_path]]
+        out_list = self.dircache[inp_path] if detail else [x["name"] for x in self.dircache[inp_path]]
+
+        # Invalidate the cache if limit is used when listing files. Same remarks as above.
+        if limit != -1 and inp_path in self.dircache:
+            del self.dircache[inp_path]
+
+        return out_list
 
     def makedirs(self, path: str, exist_ok: bool = True) -> None:
         """Create a directory at a path given.
