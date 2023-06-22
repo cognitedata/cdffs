@@ -26,7 +26,7 @@ Guidelines
            | `cdffs://ocean/production_data/atlantic_prod.csv`
          - VALID
 
-* User must use a valid file extension when working with CDF Files. 
+* User must use a valid file extension when working with CDF Files.
 
     * `cdffs://sample_data/test.zarr`
 
@@ -34,7 +34,7 @@ Guidelines
 
     * `cdffs://sample_data/test.parquet`
 
-    | Note: It is still recommended to use a valid file extension even when the data is split into multiple files. for example, dask might partition the data into multiple part files. 0.part, 1.part etc and it is still recommended to use an extension as well. Optionally, if you wish to avoid using file extensions especially when the data is split into multiple files, user can explicitly specify directory field in metadata to pass information about the directory prefix. Example, 
+    | Note: It is still recommended to use a valid file extension even when the data is split into multiple files. for example, dask might partition the data into multiple part files. 0.part, 1.part etc and it is still recommended to use an extension as well. Optionally, if you wish to avoid using file extensions especially when the data is split into multiple files, user can explicitly specify directory field in metadata to pass information about the directory prefix. Example,
 
     .. code-block:: python
 
@@ -51,9 +51,8 @@ Guidelines
 
         ds = xarray.open_zarr("cdffs://sample_data/test.zarr", storage_options={"connection_config": client_cnf, "cache_type": "all"})
 
-* Users can choose to use a file specific metadata when opening a file for write using file-like API. 
+* Users can also choose to use a `limit` when working with `ls`. It may be useful when using file IO.
 
     .. code-block:: python
 
-        with fs.open("test_data/test/workfile.csv", mode="wb",file_metadata=FileMetadata(source="test")) as f:
-        f.write("test_data".encode("utf8"))
+        fs.ls("test_data/test/", detail=True, limit=100)
