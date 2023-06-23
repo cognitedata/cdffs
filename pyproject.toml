@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cognite-cdffs"
-version = "0.2.4"
+version = "0.2.5"
 description = "File System Interface for CDF Files"
 license = "Apache-2.0"
 authors = ["Infant Alex <infant.alex@cognite.com>"]

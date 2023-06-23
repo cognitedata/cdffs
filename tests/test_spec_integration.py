@@ -15,6 +15,7 @@ import xarray as xr
 from cognite.client import ClientConfig, CogniteClient, global_config
 from cognite.client.credentials import OAuthClientCredentials
 from cognite.client.data_classes.files import FileMetadata
+from cognite.client.exceptions import CogniteDuplicatedError, CogniteNotFoundError
 
 from cognite.cdffs.spec import CdfFileSystem
 
@@ -88,8 +89,12 @@ def verify_file_status(cognite_client, source, external_ids):
 def delete_files(cognite_client):
     for source in _SOURCES:
         list_of_ids = [x.external_id for x in cognite_client.files.list(source=source, limit=-1)]
+        print(list_of_ids)
         if list_of_ids:
-            cognite_client.files.delete(external_id=list_of_ids)
+            try:
+                cognite_client.files.delete(external_id=list_of_ids)
+            except (CogniteNotFoundError, CogniteDuplicatedError):
+                pass
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -402,6 +407,99 @@ def test_file_io_list_file(cognite_client, client_config, data_set_id):
 
     file_list = file_system.ls("/file_io/test_int_sample_file_02.json")
     assert file_list == ["file_io/test_int_sample_file_02.json"]
+
+    del file_system
+
+
+# File IO
+# File-format: csv,json
+# Scenario: File listing with limit and subsequent call with no limit.
+def test_file_io_list_limit(cognite_client, client_config, data_set_id):
+    file_system = CdfFileSystem(connection_config=client_config)
+
+    verify_file_status(cognite_client, "test_int_file_io", "test_int_sample_file_01.csv")
+    verify_file_status(cognite_client, "test_int_file_io", "test_int_sample_file_02.json")
+
+    file_list = file_system.ls("/file_io/", detail=True, limit=1)
+    assert len([x for x in file_list if x["type"] == "file"]) == 1
+
+    file_list = file_system.ls("/file_io/", detail=True)
+    out_file_list = [x["name"] for x in file_list if x["type"] == "file"]
+    assert sorted(out_file_list) == [
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
+
+    del file_system
+
+
+# File IO
+# File-format: csv,json
+# Scenario: File listing with no limit and subsequent call with limit.
+def test_file_io_list_limit_no_cache(cognite_client, client_config, data_set_id):
+    file_system = CdfFileSystem(connection_config=client_config)
+
+    file_list = file_system.ls("/file_io/", detail=True)
+    out_file_list = [x["name"] for x in file_list if x["type"] == "file"]
+    assert sorted(out_file_list) == [
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
+
+    file_list = file_system.ls("/file_io/", detail=True, limit=1)
+    assert len([x for x in file_list if x["type"] == "file"]) == 1
+
+    del file_system
+
+
+# File IO
+# File-format: csv,json
+# Scenario: File listing with no limit and subsequent call with limit and no limit.
+def test_file_io_list_limit_mix_01(cognite_client, client_config, data_set_id):
+    file_system = CdfFileSystem(connection_config=client_config)
+
+    file_list = file_system.ls("/file_io/", detail=True)
+    out_file_list = [x["name"] for x in file_list if x["type"] == "file"]
+    assert sorted(out_file_list) == [
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
+
+    file_list = file_system.ls("/file_io/", detail=True, limit=1)
+    assert len([x for x in file_list if x["type"] == "file"]) == 1
+
+    file_list = file_system.ls("/file_io/", detail=True)
+    out_file_list = [x["name"] for x in file_list if x["type"] == "file"]
+    assert sorted(out_file_list) == [
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
+
+    del file_system
+
+
+# File IO
+# File-format: csv,json
+# Scenario: File listing with limit and subsequent calls with limit
+def test_file_io_list_limit_mix_02(cognite_client, client_config, data_set_id):
+    file_system = CdfFileSystem(connection_config=client_config)
+
+    file_list = file_system.ls("/file_io/", detail=True, limit=1)
+    assert len([x for x in file_list if x["type"] == "file"]) == 1
+
+    file_list = file_system.ls("/file_io/", detail=True)
+    out_file_list = [x["name"] for x in file_list if x["type"] == "file"]
+    assert sorted(out_file_list) == [
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
+
+    file_list = file_system.ls("/file_io/", detail=True)
+    out_file_list = [x["name"] for x in file_list if x["type"] == "file"]
+    assert sorted(out_file_list) == [
+        "file_io/test_int_sample_file_01.csv",
+        "file_io/test_int_sample_file_02.json",
+    ]
 
     del file_system
 

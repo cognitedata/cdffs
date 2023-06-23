@@ -103,3 +103,12 @@ Changes are grouped as follows
 - Dependency updates for docs & source code.
 
 [unreleased]:
+
+
+## [0.2.5] - 2023-06-22
+
+### Fixed
+- Added `limit` option for `ls` method. It will be useful for file io operations.
+- Dependency updates for docs & source code.
+
+[unreleased]:
