@@ -112,3 +112,12 @@ Changes are grouped as follows
 - Dependency updates for docs & source code.
 
 [unreleased]:
+
+
+## [0.2.6] - 2023-07-03
+
+### Fixed
+- Directory cache is updated to have latest file size information when the file is re-uploaded immediately.
+- Dependency updates for docs & source code.
+
+[unreleased]:
