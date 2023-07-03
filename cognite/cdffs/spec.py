@@ -177,7 +177,13 @@ class CdfFileSystem(AbstractFileSystem):
         if parent_path not in self.dircache:
             self.dircache[parent_path] = [file_meta]
         else:
-            self.dircache[parent_path].append(file_meta)
+            # Update the size information if the file name already exists.
+            for file_info in self.dircache[parent_path]:
+                if file_info["name"] == file_meta["name"]:
+                    file_info["size"] = file_size
+                    break
+            else:
+                self.dircache[parent_path].append(file_meta)
 
         grand_parent_path = str(Path(parent_path).parent).lstrip("/")
         dir_meta = {"type": "directory", "name": parent_path.lstrip("/")}
@@ -378,7 +384,7 @@ class CdfFileSystem(AbstractFileSystem):
         if external_id_prefix:
             try:
                 self.cognite_client.files.delete(external_id=external_id_prefix)
-            except CogniteNotFoundError as cognite_exp:
+            except (CogniteNotFoundError, CogniteAPIError) as cognite_exp:
                 raise FileNotFoundError from cognite_exp
 
     def rm_files(self, paths: List) -> None:
