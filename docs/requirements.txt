@@ -1,5 +1,5 @@
 toml==0.10.2
 fsspec==2023.6.0
-cognite-sdk==6.4.7
+cognite-sdk==6.5.8
 requests==2.31.0
-pydantic==1.10.9
+pydantic==1.10.10
