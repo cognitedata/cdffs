@@ -1382,7 +1382,7 @@ python-versions = "*"
 
 [[package]]
 name = "xarray"
-version = "2023.6.0"
+version = "2023.7.0"
 description = "N-D labeled arrays and datasets in Python"
 category = "dev"
 optional = false
@@ -2402,8 +2402,8 @@ webencodings = [
     {file = "webencodings-0.5.1.tar.gz", hash = "sha256:b36a1c245f2d304965eb4e0a82848379241dc04b865afcc4aab16748587e1923"},
 ]
 xarray = [
-    {file = "xarray-2023.6.0-py3-none-any.whl", hash = "sha256:bdd4c45511ab4e84f4249ea1030336db59b750968f25369d8e132d6d7ead7cc9"},
-    {file = "xarray-2023.6.0.tar.gz", hash = "sha256:267a231ee4efc0341ebbffc6d4ec60e4a66e4849c16e0305c03fcefeca77698c"},
+    {file = "xarray-2023.7.0-py3-none-any.whl", hash = "sha256:af8b55bf78b792b8ad9326eb9d89980602f1a51e93d8465b445aeea3accca27e"},
+    {file = "xarray-2023.7.0.tar.gz", hash = "sha256:dace2fdbf1b7ff185d9c1226a24bf83c2ae52f3253dbfe80e17d1162600d055c"},
 ]
 zarr = [
     {file = "zarr-2.15.0-py3-none-any.whl", hash = "sha256:7296b9f42cdc9096c5349527e71492c1b05ed5464027bfa5d008339796d00b9f"},
