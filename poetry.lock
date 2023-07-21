@@ -1403,7 +1403,7 @@ viz = ["matplotlib", "nc-time-axis", "seaborn"]
 
 [[package]]
 name = "zarr"
-version = "2.15.0"
+version = "2.16.0"
 description = "An implementation of chunked, compressed, N-dimensional arrays for Python"
 category = "dev"
 optional = false
@@ -2406,8 +2406,8 @@ xarray = [
     {file = "xarray-2023.6.0.tar.gz", hash = "sha256:267a231ee4efc0341ebbffc6d4ec60e4a66e4849c16e0305c03fcefeca77698c"},
 ]
 zarr = [
-    {file = "zarr-2.15.0-py3-none-any.whl", hash = "sha256:7296b9f42cdc9096c5349527e71492c1b05ed5464027bfa5d008339796d00b9f"},
-    {file = "zarr-2.15.0.tar.gz", hash = "sha256:3894001c0bb5d68d3d21a0562cc49e6ba14fee7d17ad2be8d088ab301665a4c6"},
+    {file = "zarr-2.16.0-py3-none-any.whl", hash = "sha256:6cf9e6e4c58b9233262e024394e68921a438a6af5a7428bd6bdb1e4e8d05b69a"},
+    {file = "zarr-2.16.0.tar.gz", hash = "sha256:84e36b695bda0ecea52af9861271984cb22a5c864679907b7b9ba3f79b684f7e"},
 ]
 zipp = [
     {file = "zipp-3.15.0-py3-none-any.whl", hash = "sha256:48904fc76a60e542af151aded95726c1a5c34ed43ab4134b597665c86d7ad556"},
