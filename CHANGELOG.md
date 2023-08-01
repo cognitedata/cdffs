@@ -121,3 +121,11 @@ Changes are grouped as follows
 - Dependency updates for docs & source code.
 
 [unreleased]:
+
+
+## [0.2.7] - 2023-08-01
+
+### Fixed
+- Dependency updates for docs & source code to eliminate the security vulnerabilities found on the `cryptography` and `certifi` packages.
+
+[unreleased]:
