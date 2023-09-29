@@ -1,10 +1,11 @@
 """Construct cognite client config from environment variables."""
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from cognite.client import ClientConfig, CogniteClient
 from cognite.client.credentials import OAuthClientCredentials, Token
-from pydantic import BaseSettings, SecretStr, validator
+from pydantic import ConfigDict, SecretStr, field_validator
+from pydantic_settings import BaseSettings
 
 
 def validate_scopes(cls: Any, value: str) -> Optional[List]:
@@ -17,12 +18,7 @@ def validate_scopes(cls: Any, value: str) -> Optional[List]:
 class FsConfig(BaseSettings):
     """Base config to parse environment variables."""
 
-    class Config:
-        """Global config for Base Settings."""
-
-        env_nested_delimiter = "__"
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config: ConfigDict = ConfigDict(env_nested_delimiter="__", env_file=".env", env_file_encoding="utf-8")
 
 
 class FsCredentials(FsConfig, ABC):
@@ -71,10 +67,10 @@ class FsOAuthCredentials(FsCredentials, FsConfig):
     token_url: Optional[str] = None
     client_id: Optional[SecretStr] = None
     client_secret: Optional[SecretStr] = None
-    scopes: Optional[str] = None
+    scopes: Optional[Union[str, List]] = None
 
     # Validator
-    _scopes = validator("scopes", always=True, allow_reuse=True)(validate_scopes)
+    _scopes = field_validator("scopes")(validate_scopes)
 
     def get_credentials(self) -> OAuthClientCredentials:
         """Construct credentials based on environment variables.
@@ -116,11 +112,11 @@ def get_connection_config(env_file: str) -> CogniteClient:
     """Construct Cognite Client from environment variables."""
     credentials = FsOAuthCredentials(_env_file=env_file)
     connection_config = None
-    if all(value is not None for _, value in credentials.dict().items()):
+    if all(value is not None for _, value in credentials.model_dump().items()):
         connection_config = credentials.get_client_config()
     else:
         token = FsToken(_env_file=env_file)
-        if all(value is not None for _, value in token.dict().items()):
+        if all(value is not None for _, value in token.model_dump().items()):
             connection_config = token.get_client_config()
 
     return connection_config
