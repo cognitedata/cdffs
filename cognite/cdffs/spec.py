@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests
 from cognite.client import ClientConfig, CogniteClient
-from cognite.client.data_classes.files import FileMetadata
+from cognite.client.data_classes.files import FileMetadata, FileMetadataUpdate
 from cognite.client.exceptions import (
     CogniteAPIError,
     CogniteAuthError,
@@ -643,19 +643,28 @@ class CdfFile(AbstractBufferedFile):
         self.root_dir: str = directory
         self.external_id: str = external_id
         self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
-        self.file_metadata: FileMetadata = FileMetadata(metadata={})
+        self.file_metadata: FileMetadata = FileMetadata(
+            name=Path(path).name,
+            external_id=self.external_id,
+            directory=self.root_dir,
+        )
 
         # User can use a file metadata for each file when they write the files.
         if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
-            self.file_metadata = kwargs.pop("file_metadata")
+            self.file_metadata = FileMetadata(
+                **{
+                    **kwargs.pop("file_metadata").dump(),  # type: ignore
+                    **self.file_metadata.dump(),
+                }
+            )
 
         self.write_strategy: UploadStrategy
 
-        if self.fs.upload_strategy == "google":
+        if fs.upload_strategy == "google" and mode != "rb":
             self.write_strategy = GoogleUploadStrategy(self.file_metadata, self.cognite_client)
-        elif self.fs.upload_strategy == "azure":
+        elif fs.upload_strategy == "azure" and mode != "rb":
             self.write_strategy = AzureUploadStrategy(self.file_metadata, self.cognite_client)
-        else:
+        elif mode != "rb":
             self.write_strategy = InMemoryUploadStrategy(self.file_metadata, self.cognite_client)
 
         super().__init__(
@@ -699,7 +708,17 @@ class CdfFile(AbstractBufferedFile):
 
             # If it's the final block, then send a merge request
             if final:
-                self.write_strategy.merge_chunks()
+                total_size = self.write_strategy.merge_chunks()
+
+                self.cognite_client.files.update(
+                    item=FileMetadataUpdate(external_id=self.external_id).metadata.set({"size": total_size})
+                )
+
+                self.fs.cache_path(
+                    self.root_dir,
+                    self.external_id,
+                    total_size,
+                )
 
             return final
 

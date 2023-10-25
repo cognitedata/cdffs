@@ -50,5 +50,6 @@ class GoogleUploadStrategy(UploadStrategy):
 
         logging.info(f"Received chunk {index}. Cache size: {len(self.chunk_cache)} chunks")
 
-    def merge_chunks(self) -> None:
+    def merge_chunks(self) -> int:
         """Google Cloud Storage handles merging internally. So, this method is a no-op for the GCS strategy."""
+        return self.last_written_byte + 1

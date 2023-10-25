@@ -14,6 +14,7 @@ class AzureUploadStrategy(UploadStrategy):
     def __init__(self, metadata: FileMetadata, cognite_client: CogniteClient):
         """Initializer."""
         super().__init__(metadata, cognite_client)
+        self.total_size = 0
 
     def _generate_block_blob_block_id(self, index: int, block_name_prefix: str = __file__.__str__()) -> str:
         while len(block_name_prefix) < 19:
@@ -39,6 +40,7 @@ class AzureUploadStrategy(UploadStrategy):
                 },
             )
             response.raise_for_status()
+            self.total_size += len(data)  # track total object size
             with self.lock:
                 self.indexes.append(index)
             logging.info(f"Finished uploading block {index}. Took {response.elapsed.total_seconds()} sec")
@@ -46,7 +48,7 @@ class AzureUploadStrategy(UploadStrategy):
             logging.warning("Failed to upload on of the blocks: {ex}", exc_info=ex)
             raise
 
-    def merge_chunks(self) -> None:
+    def merge_chunks(self) -> int:
         """Merge all uploaded blocks into the final blob."""
         try:
             upload_url = self.params["upload_url"]
@@ -67,6 +69,8 @@ class AzureUploadStrategy(UploadStrategy):
                 },
             )
             response.raise_for_status()
+
+            return self.total_size
         except Exception as ex:
             logging.warning("Failed to merge all blocks: {ex}", exc_info=ex)
             raise

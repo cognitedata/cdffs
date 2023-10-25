@@ -1,7 +1,6 @@
 """Abstract upload strategy."""
 import abc
 import threading
-from pathlib import Path
 from typing import Dict, List
 
 import requests
@@ -40,8 +39,8 @@ class UploadStrategy(abc.ABC):
         file_descriptor = self.cognite_client.post(
             f"/api/v1/projects/{self.cognite_client.config.project}/files?overwrite=true",
             json={
-                "externalId": Path(metadata.external_id).name,
-                "name": Path(metadata.external_id).name,
+                "externalId": metadata.external_id,
+                "name": metadata.name,
                 "directory": metadata.directory,
                 "source": metadata.source or None,
                 "assetIds": metadata.asset_ids or None,
@@ -62,5 +61,5 @@ class UploadStrategy(abc.ABC):
         """Upload single chunk."""
 
     @abc.abstractmethod
-    def merge_chunks(self) -> None:
+    def merge_chunks(self) -> int:
         """Finalize the upload."""

@@ -24,11 +24,13 @@ class InMemoryUploadStrategy(UploadStrategy):
         with self.lock:
             self.blocks[index] = data
 
-    def merge_chunks(self) -> None:
+    def merge_chunks(self) -> int:
         """Merge all uploaded blocks into the final blob."""
         try:
             content = b"".join([self.blocks[key] for key in sorted(self.blocks.keys())])
             self.cognite_client.files.upload_bytes(content=content, **self.metadata.dump())
+            return len(content)
+
         except Exception as ex:
             logging.warning("Failed to merge all blocks: {ex}", exc_info=ex)
             raise
