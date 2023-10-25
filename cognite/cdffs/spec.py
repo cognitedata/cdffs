@@ -1,11 +1,15 @@
 """File System Specification for CDF Files."""
+import base64
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import requests
 from cognite.client import ClientConfig, CogniteClient
-from cognite.client.data_classes.files import FileMetadata
+from cognite.client.data_classes.files import FileMetadata, FileMetadataUpdate
 from cognite.client.exceptions import (
     CogniteAPIError,
     CogniteAuthError,
@@ -16,6 +20,7 @@ from cognite.client.exceptions import (
 from fsspec import AbstractFileSystem
 from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
+from fsspec.utils import DEFAULT_BLOCK_SIZE
 
 from .credentials import get_connection_config
 from .file_handler import FileException, FileHandler
@@ -461,7 +466,7 @@ class CdfFileSystem(AbstractFileSystem):
         self,
         path: str,
         mode: str = "rb",
-        block_size: str = "default",
+        block_size: int = DEFAULT_BLOCK_SIZE,
         cache_options: Optional[Dict[Any, Any]] = None,
         **kwargs: Optional[Any],
     ) -> "CdfFile":
@@ -612,7 +617,7 @@ class CdfFile(AbstractBufferedFile):
         directory: str,
         external_id: str,
         mode: str = "rb",
-        block_size: str = "default",
+        block_size: int = DEFAULT_BLOCK_SIZE,
         cache_options: Optional[Union[Dict[Any, Any], None]] = None,
         **kwargs: Optional[Any],
     ) -> None:
@@ -625,7 +630,7 @@ class CdfFile(AbstractBufferedFile):
             directory (str): Root directory for the file.
             external_id (str): External Id for the file.
             mode (str): Mode to work with the file.
-            block_size (str): Block size to read/write the file.
+            block_size (int): Block size to read/write the file.
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
         """
@@ -634,10 +639,32 @@ class CdfFile(AbstractBufferedFile):
         self.external_id: str = external_id
         self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
         self.file_metadata: FileMetadata = FileMetadata(metadata={})
+        self.block_ids: List[str] = list()
 
         # User can use a file metadata for each file when they write the files.
         if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
             self.file_metadata = kwargs.pop("file_metadata")
+
+        self.file_descriptor = self.cognite_client.post(
+            f"/api/v1/projects/{self.cognite_client.config.project}/files?overwrite=true",
+            json={
+                "externalId": Path(self.external_id).name,
+                "name": Path(self.external_id).name,
+                "directory": self.root_dir,
+                "source": self.file_metadata.source or fs.file_metadata.source,
+                "assetIds": self.file_metadata.asset_ids or fs.file_metadata.asset_ids,
+                "dataSetId": self.file_metadata.data_set_id or fs.file_metadata.data_set_id,
+                "mimeType": self.file_metadata.mime_type or fs.file_metadata.mime_type,
+                "geoLocation": self.file_metadata.geo_location or fs.file_metadata.geo_location,
+                "metadata": {
+                    **self.file_metadata.dump()["metadata"],
+                    **fs.file_metadata.metadata,
+                },
+            },
+        ).json()
+
+        self.session = requests.Session()
+        self.index = 0
 
         super().__init__(
             fs,
@@ -647,6 +674,35 @@ class CdfFile(AbstractBufferedFile):
             cache_options=cache_options,
             **kwargs,
         )
+
+    def _merge_blocks(self) -> None:
+        """Merge all uploaded blocks into the final blob."""
+        # Commit the blocks
+        commit_url = f"{self.file_descriptor['uploadUrl']}&comp=blocklist"
+        block_list_xml = '<?xml version="1.0" encoding="utf-8"?><BlockList>'
+        for block_id in self.block_ids:
+            block_list_xml += f"<Latest>{block_id}</Latest>"
+        block_list_xml += "</BlockList>"
+
+        response = self.session.put(
+            commit_url,
+            data=block_list_xml,
+            headers={
+                "x-ms-blob-content-type": "application/xml",
+                "Content-Length": str(len(block_list_xml)),
+                "x-ms-version": "2019-12-12",
+            },
+        )
+        response.raise_for_status()
+
+        self.cognite_client.files.update(
+            item=FileMetadataUpdate(id=self.file_descriptor["id"])
+            .metadata()
+            .set({"size": (len(self.block_ids) - 1) * self.blocksize + self.buffer.getbuffer().nbytes})
+        )
+
+        # Clear block ids
+        self.block_ids.clear()
 
     def _upload_chunk(self, final: bool = False) -> bool:
         """Upload file contents to CDF.
@@ -660,37 +716,70 @@ class CdfFile(AbstractBufferedFile):
         Raises:
             RuntimeError: When an unexpected error occurred.
         """
-        try:
-            if final:
-                file_metadata = self.file_metadata.metadata or self.fs.file_metadata.metadata
-                file_metadata = (
-                    dict(file_metadata, **{"size": self.buffer.getbuffer().nbytes})
-                    if file_metadata
-                    else {"size": self.buffer.getbuffer().nbytes}
-                )
-                response = self.cognite_client.files.upload_bytes(
-                    content=self.buffer.getbuffer(),
-                    name=Path(self.external_id).name,
-                    external_id=self.external_id,
-                    directory=self.root_dir,
-                    source=self.file_metadata.source or self.fs.file_metadata.source,
-                    asset_ids=self.file_metadata.asset_ids or self.fs.file_metadata.asset_ids,
-                    data_set_id=self.file_metadata.data_set_id or self.fs.file_metadata.data_set_id,
-                    mime_type=self.file_metadata.mime_type or self.fs.file_metadata.mime_type,
-                    geo_location=self.file_metadata.geo_location or self.fs.file_metadata.geo_location,
-                    metadata=file_metadata,
-                    overwrite=True,
-                )
 
-                self.fs.cache_path(
-                    self.root_dir,
-                    self.external_id,
-                    int(response.metadata.get("size")) if response.metadata.get("size") else -1,
+        def generate_block_blob_block_id(block_name_prefix: str, index: int) -> str:
+            while len(block_name_prefix) < 19:
+                block_name_prefix += "x"
+            block_id = f"{block_name_prefix[:19]}{index:05}".encode("utf-8")
+
+            return base64.b64encode(block_id).decode("utf-8")
+
+        def upload_block(block_data: bytes, block_id: str) -> None:
+            """Uploads a single block."""
+            try:
+                url = self.file_descriptor["uploadUrl"].split("?")
+                upload_block_url = f"{url[0]}?blockid={block_id}&comp=block&{url[1]}"
+                response = self.session.put(
+                    upload_block_url,
+                    data=block_data,
+                    headers={
+                        "Accept": "application/xml",
+                        "Content-Type": "application/octet-stream",
+                        "Content-Length": str(len(block_data)),
+                        "x-ms-version": "2019-12-12",
+                    },
                 )
+                response.raise_for_status()
+                logging.info(f"Finished uploading block {block_id}. Took {response.elapsed.total_seconds()} sec")
+            except Exception as ex:
+                logging.warning("Failed to upload on of the blocks: {ex}", exc_info=ex)
+                raise
+
+        try:
+            buffer_length = self.buffer.getbuffer().nbytes
+            blocks = [self.buffer.getbuffer()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
+
+            # Only consider blocks of full size for uploading
+            full_blocks = [b for b in blocks if len(b) == self.blocksize]
+
+            logging.info(f"{len(full_blocks)} full blocks discovered")
+
+            # Upload blocks in parallel using ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                block_ids = [
+                    generate_block_blob_block_id(self.external_id, index)
+                    for index in range(self.index, self.index + len(full_blocks))
+                ]
+                self.block_ids.extend(block_ids)
+
+                list(executor.map(upload_block, full_blocks, block_ids))
+
+            # Reset buffer to only contain the leftover data (less than blocksize)
+            leftover_data = b"".join(blocks[len(full_blocks) :])
+            self.buffer: BytesIO = BytesIO(leftover_data)
+
+            # Update the index
+            self.index += len(full_blocks)
+
+            # If it's the final block, then send a merge request
+            if final:
+                upload_block(leftover_data, generate_block_blob_block_id(self.external_id, self.index))
+                self._merge_blocks()
 
             return final
-        except _COMMON_EXCEPTIONS as cognite_exp:
-            raise RuntimeError from cognite_exp
+
+        except (requests.exceptions.RequestException, _COMMON_EXCEPTIONS) as error:  # type: ignore
+            raise RuntimeError from error
 
     def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.
