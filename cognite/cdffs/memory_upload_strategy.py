@@ -17,6 +17,7 @@ class InMemoryUploadStrategy(UploadStrategy):
         super().__init__(metadata, cognite_client)
         self.blocks: Dict[int, bytes] = {}
         self.lock = threading.Lock()
+        self.metadata = metadata
 
     def upload_chunk(self, data: bytes, index: int) -> None:
         """Upload single chunk."""
@@ -27,7 +28,7 @@ class InMemoryUploadStrategy(UploadStrategy):
         """Merge all uploaded blocks into the final blob."""
         try:
             content = b"".join([self.blocks[key] for key in sorted(self.blocks.keys())])
-            self.cognite_client.files.upload_bytes(content=content, id=self.params["id"])
+            self.cognite_client.files.upload_bytes(content=content, **self.metadata.dump())
         except Exception as ex:
             logging.warning("Failed to merge all blocks: {ex}", exc_info=ex)
             raise
