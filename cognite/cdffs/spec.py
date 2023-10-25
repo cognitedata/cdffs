@@ -688,7 +688,8 @@ class CdfFile(AbstractBufferedFile):
             commit_url,
             data=block_list_xml,
             headers={
-                "x-ms-blob-content-type": "application/xml",
+                "x-ms-blob-content-type": self.file_metadata.mime_type,
+                "Content-Type": "application/xml",
                 "Content-Length": str(len(block_list_xml)),
                 "x-ms-version": "2019-12-12",
             },
