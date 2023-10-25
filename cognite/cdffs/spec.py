@@ -697,7 +697,7 @@ class CdfFile(AbstractBufferedFile):
 
         self.cognite_client.files.update(
             item=FileMetadataUpdate(id=self.file_descriptor["id"])
-            .metadata()
+            .metadata
             .set({"size": (len(self.block_ids) - 1) * self.blocksize + self.buffer.getbuffer().nbytes})
         )
 
@@ -761,8 +761,8 @@ class CdfFile(AbstractBufferedFile):
                     for index in range(self.index, self.index + len(full_blocks))
                 ]
                 self.block_ids.extend(block_ids)
-
-                list(executor.map(upload_block, full_blocks, block_ids))
+                for arg in zip(full_blocks, block_ids):
+                    executor.submit(upload_block, arg[0], arg[1])
 
             # Reset buffer to only contain the leftover data (less than blocksize)
             leftover_data = b"".join(blocks[len(full_blocks) :])
@@ -773,7 +773,9 @@ class CdfFile(AbstractBufferedFile):
 
             # If it's the final block, then send a merge request
             if final:
-                upload_block(leftover_data, generate_block_blob_block_id(self.external_id, self.index))
+                block_id = generate_block_blob_block_id(self.external_id, self.index)
+                upload_block(leftover_data, block_id)
+                self.block_ids.append(block_id)
                 self._merge_blocks()
 
             return final
