@@ -131,7 +131,7 @@ def mock_files_upload_response(request):
             "uploadUrl": "https://azure.blob-test.com/uploaddata",
         }
 
-        wirte_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files?overwrite=True"
+        wirte_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files"
         azure_upload_url_pattern = "https://azure.blob-test.com/uploaddata"
         response.assert_all_requests_are_fired = False
 

@@ -28,7 +28,7 @@ class InMemoryUploadStrategy(UploadStrategy):
         """Merge all uploaded blocks into the final blob."""
         try:
             content = b"".join([self.blocks[key] for key in sorted(self.blocks.keys())])
-            self.cognite_client.files.upload_bytes(content=content, **self.metadata.dump())
+            self.cognite_client.files.upload_bytes(content=content, **self.metadata.dump(), overwrite=True)
             return len(content)
 
         except Exception as ex:
