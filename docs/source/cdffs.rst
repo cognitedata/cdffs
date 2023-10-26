@@ -146,5 +146,9 @@ Supported configurations when working with `cdffs`.
      - `Optional`
      - Flag to indicate enable/disable download retries. Default is True.
 
-
+   * - `upload_strategy`
+     - `Optional`
+     - Flag to configure various file upload strategies. Possible values: [`azure`, `google`, `inmemory`]. Default is `inmemory`.
+       `azure`: will use multipart upload expecting CDF in Azure. `google` will use multipart upload expecting CDF in Google.
+       `inmemory` is a default upload strategy, where entire file is cached and uploaded as a single call to CDF.
 
