@@ -3,6 +3,7 @@
 
 import json
 import os
+import random
 import time
 
 import dask.dataframe as dd
@@ -90,17 +91,18 @@ def verify_file_status(cognite_client, source, external_ids):
 
 
 def delete_files(cognite_client):
+    list_of_ids = set()
     for source in _SOURCES:
-        list_of_ids = [
-            x.external_id
-            for x in cognite_client.files.list(source=source, limit=-1)
-        ]
-        print(list_of_ids)
-        if list_of_ids:
-            try:
-                cognite_client.files.delete(external_id=list_of_ids)
-            except (CogniteNotFoundError, CogniteDuplicatedError):
-                pass
+        list_of_ids.update([x.external_id for x in cognite_client.files.list(source=source, limit=-1)])
+    list_of_ids.update(
+        [x.external_id for x in cognite_client.files.list(data_set_external_ids="dataset:integration_tests", limit=-1)]
+    )
+    print(list_of_ids)
+    if list_of_ids:
+        try:
+            cognite_client.files.delete(external_id=list(list_of_ids))
+        except (CogniteNotFoundError, CogniteDuplicatedError):
+            pass
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -197,15 +199,17 @@ def test_xarray_zarr(cognite_client, client_config, data_set_id):
     file_metadata = FileMetadata(
         source="test_int_xarray_zarr", mime_type="application/octet-stream", data_set_id=data_set_id
     )
+    random.seed()
+    uuid = random.randint(0, 100)
     inp_ds.to_zarr(
-        "cdffs://tests/integration/xarray/zarr/test_int_xarray.zarr",
+        f"cdffs://tests/integration/xarray/zarr/test_int_xarray_{uuid}.zarr",
         storage_options={"connection_config": client_config, "file_metadata": file_metadata},
     )
 
-    verify_file_status(cognite_client, "test_int_xarray_zarr", "test_int_xarray.zarr")
+    verify_file_status(cognite_client, "test_int_xarray_zarr", f"test_int_xarray_{uuid}.zarr")
 
     res_da = xr.open_zarr(
-        "cdffs://tests/integration/xarray/zarr/test_int_xarray.zarr",
+        f"cdffs://tests/integration/xarray/zarr/test_int_xarray_{uuid}.zarr",
         storage_options={"connection_config": client_config},
     )
     assert inp_ds.dims == res_da.dims
