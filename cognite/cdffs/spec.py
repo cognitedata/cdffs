@@ -52,11 +52,11 @@ class CdfFileSystem(AbstractFileSystem):
     protocol: str = "cdffs"
 
     def __init__(
-        self,
-        connection_config: Optional[ClientConfig] = None,
-        file_metadata: FileMetadata = FileMetadata(metadata={}),
-        upload_strategy: str = "inmemory",
-        **kwargs: Optional[Any],
+            self,
+            connection_config: Optional[ClientConfig] = None,
+            file_metadata: FileMetadata = FileMetadata(metadata={}),
+            upload_strategy: str = "inmemory",
+            **kwargs: Optional[Any],
     ) -> None:
         """Initialize the CdfFileSystem and creates a connection to CDF.
 
@@ -105,9 +105,9 @@ class CdfFileSystem(AbstractFileSystem):
         return stripped_path
 
     def do_connect(
-        self,
-        connection_config: ClientConfig,
-        **kwargs: Optional[Any],
+            self,
+            connection_config: ClientConfig,
+            **kwargs: Optional[Any],
     ) -> None:
         """Connect to CDF using the connection configurations provided by the user.
 
@@ -160,7 +160,7 @@ class CdfFileSystem(AbstractFileSystem):
         elif self._suffix_exists(path):
             external_id_prefix = [x for x in Path(path).parts if Path(x).suffix][0]
             root_dir = path[: path.find(external_id_prefix)].strip("/")
-            external_id = path[path.find(external_id_prefix) :]
+            external_id = path[path.find(external_id_prefix):]
 
         elif Path(path).parts and not validate_suffix:
             external_id_prefix = ""
@@ -312,9 +312,9 @@ class CdfFileSystem(AbstractFileSystem):
 
         inp_key = str(Path(root_dir, external_id_prefix)).lstrip("/")
         if limit != -1 or not (
-            inp_key in self.dircache
-            and inp_key in self.cdf_list_cache
-            and time.time() - self.cdf_list_cache[inp_key] < self.cdf_list_expiry_time
+                inp_key in self.dircache
+                and inp_key in self.cdf_list_cache
+                and time.time() - self.cdf_list_cache[inp_key] < self.cdf_list_expiry_time
         ):
             self._ls(root_dir, external_id_prefix, limit=limit)  # type: ignore
 
@@ -432,12 +432,12 @@ class CdfFileSystem(AbstractFileSystem):
         return bool(self.cognite_client.files.retrieve(external_id=external_id)) if external_id else False
 
     def mv(
-        self,
-        source_path: str,
-        destination_path: str,
-        recursive: bool = False,
-        maxdepth: Union[int, None] = None,
-        **kwargs: Optional[Any],
+            self,
+            source_path: str,
+            destination_path: str,
+            recursive: bool = False,
+            maxdepth: Union[int, None] = None,
+            **kwargs: Optional[Any],
     ) -> None:
         """Move the files and directories at a path given to a new path.
 
@@ -467,12 +467,12 @@ class CdfFileSystem(AbstractFileSystem):
         raise NotImplementedError
 
     def open(
-        self,
-        path: str,
-        mode: str = "rb",
-        block_size: int = DEFAULT_BLOCK_SIZE,
-        cache_options: Optional[Dict[Any, Any]] = None,
-        **kwargs: Optional[Any],
+            self,
+            path: str,
+            mode: str = "rb",
+            block_size: int = DEFAULT_BLOCK_SIZE,
+            cache_options: Optional[Dict[Any, Any]] = None,
+            **kwargs: Optional[Any],
     ) -> "CdfFile":
         """Open the file for reading and writing.
 
@@ -501,7 +501,7 @@ class CdfFileSystem(AbstractFileSystem):
         )
 
     def read_file(
-        self, external_id: str, start_byte: Union[int, None] = None, end_byte: Union[int, None] = None
+            self, external_id: str, start_byte: Union[int, None] = None, end_byte: Union[int, None] = None
     ) -> Any:
         """Open and read the contents of a file.
 
@@ -540,7 +540,7 @@ class CdfFileSystem(AbstractFileSystem):
                 raise FileNotFoundError from cognite_exp
 
     def cat(
-        self, path: Union[str, list], recursive: bool = False, on_error: str = "raise", **kwargs: Optional[Any]
+            self, path: Union[str, list], recursive: bool = False, on_error: str = "raise", **kwargs: Optional[Any]
     ) -> Union[bytes, Any, Dict[str, bytes]]:
         """Open and read the contents of a file(s).
 
@@ -614,16 +614,16 @@ class CdfFile(AbstractBufferedFile):
     """
 
     def __init__(
-        self,
-        fs: CdfFileSystem,
-        cognite_client: CogniteClient,
-        path: str,
-        directory: str,
-        external_id: str,
-        mode: str = "rb",
-        block_size: int = DEFAULT_BLOCK_SIZE,
-        cache_options: Optional[Union[Dict[Any, Any], None]] = None,
-        **kwargs: Optional[Any],
+            self,
+            fs: CdfFileSystem,
+            cognite_client: CogniteClient,
+            path: str,
+            directory: str,
+            external_id: str,
+            mode: str = "rb",
+            block_size: int = DEFAULT_BLOCK_SIZE,
+            cache_options: Optional[Union[Dict[Any, Any], None]] = None,
+            **kwargs: Optional[Any],
     ) -> None:
         """Initialize the CdfFile.
 
@@ -644,17 +644,20 @@ class CdfFile(AbstractBufferedFile):
         self.external_id: str = external_id
         self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
         self.file_metadata: FileMetadata = FileMetadata(
-            name=Path(path).name,
-            external_id=self.external_id,
-            directory=self.root_dir,
+            **{
+                **fs.file_metadata.dump(),
+                "name": Path(path).name,
+                "external_id": self.external_id,
+                "directory": self.root_dir
+            }
         )
 
         # User can use a file metadata for each file when they write the files.
         if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
             self.file_metadata = FileMetadata(
                 **{
-                    **kwargs.pop("file_metadata").dump(),  # type: ignore
                     **self.file_metadata.dump(),
+                    **kwargs.pop("file_metadata").dump(),  # type: ignore
                 }
             )
 
@@ -694,7 +697,7 @@ class CdfFile(AbstractBufferedFile):
 
         try:
             buffer_length = len(self.buffer.getvalue())
-            blocks = [self.buffer.getvalue()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
+            blocks = [self.buffer.getvalue()[i: i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
 
             logging.info(f"{len(blocks)} full blocks discovered")
 
