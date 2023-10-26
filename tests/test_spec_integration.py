@@ -79,7 +79,10 @@ def verify_file_status(cognite_client, source, external_ids):
     while True:
         if (
             upload_status := [
-                x.uploaded for x in cognite_client.files.list(external_id_prefix=external_ids, source=source)
+                x.uploaded
+                for x in cognite_client.files.list(
+                    external_id_prefix=external_ids, data_set_external_ids=["dataset:integration_tests"]
+                )
             ]
         ) and all(upload_status):
             break
