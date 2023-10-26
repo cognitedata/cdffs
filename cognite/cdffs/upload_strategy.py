@@ -38,17 +38,7 @@ class UploadStrategy(abc.ABC):
         """
         file_descriptor = self.cognite_client.post(
             f"/api/v1/projects/{self.cognite_client.config.project}/files?overwrite=true",
-            json={
-                "externalId": metadata.external_id,
-                "name": metadata.name,
-                "directory": metadata.directory,
-                "source": metadata.source or None,
-                "assetIds": metadata.asset_ids or None,
-                "dataSetId": metadata.data_set_id or None,
-                "mimeType": metadata.mime_type or None,
-                "geoLocation": metadata.geo_location or None,
-                "metadata": metadata.metadata or None,
-            },
+            json=metadata.dump(camel_case=True),
         ).json()
         return {
             "id": file_descriptor["id"],
