@@ -714,7 +714,7 @@ class CdfFile(AbstractBufferedFile):
                 total_size = self.write_strategy.merge_chunks()
 
                 self.cognite_client.files.update(
-                    item=FileMetadataUpdate(external_id=self.external_id).metadata.set({"size": total_size})
+                    item=FileMetadataUpdate(external_id=self.external_id).metadata.add({"size": total_size})
                 )
 
                 self.fs.cache_path(

@@ -93,7 +93,7 @@ def delete_files(cognite_client):
     for source in _SOURCES:
         list_of_ids = [
             x.external_id
-            for x in cognite_client.files.list(data_set_external_ids=["dataset:integration_tests"], limit=-1)
+            for x in cognite_client.files.list(source=source, limit=-1)
         ]
         print(list_of_ids)
         if list_of_ids:
