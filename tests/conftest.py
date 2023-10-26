@@ -67,3 +67,8 @@ def gcp_fs():
     }
     fs = CdfFileSystem(**inp)
     return fs
+
+
+@pytest.fixture
+def filesystem(request):
+    return request.getfixturevalue(request.param)

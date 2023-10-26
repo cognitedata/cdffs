@@ -144,6 +144,7 @@ def mock_files_upload_response(request):
         if request.param == "successful":
             response.add(response.POST, write_url_pattern, status=200, json=upload_response_body)
             response.add(response.PUT, azure_upload_url_pattern, status=200, json={})
+            response.add(response.PUT, f"{azure_upload_url_pattern}&comp=blocklist", status=200, json={})
             response.add(response.POST, file_update_pattern, status=200, json=update_response_body)
         else:
             response.add(
@@ -540,7 +541,7 @@ def test_makedirs_exception(fs, exist_ok_flag, test_input, expected_result):
 
 
 @pytest.mark.parametrize(
-    "fs, test_path, test_mode, test_data, expected_len, mock_files_upload_response",
+    "filesystem, test_path, test_mode, test_data, expected_len, mock_files_upload_response",
     [
         (
             "fs",
@@ -567,11 +568,11 @@ def test_makedirs_exception(fs, exist_ok_flag, test_input, expected_result):
             "successful",
         ),
     ],
-    indirect=["mock_files_upload_response", "fs"],
+    indirect=["filesystem", "mock_files_upload_response"],
 )
 @pytest.mark.usefixtures("mock_files_upload_response")
-def test_open_write(fs, test_path, test_mode, test_data, expected_len):
-    with fs.open(test_path, mode=test_mode, file_metadata=FileMetadata(metadata={})) as cdf_file:
+def test_open_write(filesystem, test_path, test_mode, test_data, expected_len):
+    with filesystem.open(test_path, mode=test_mode, file_metadata=FileMetadata(metadata={}), block_size=5) as cdf_file:
         test_len = cdf_file.write(test_data.encode("utf-8"))
 
     assert test_len == expected_len

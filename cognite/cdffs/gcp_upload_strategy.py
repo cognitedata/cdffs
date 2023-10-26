@@ -27,9 +27,7 @@ class GoogleUploadStrategy(UploadStrategy):
 
         response = self.session.put(self.params["upload_url"], headers=headers, data=data)
         response.raise_for_status()
-
-        with self.lock:
-            self.indexes.append(index)
+        self.indexes.append(index)
 
         logging.info(f"Finished uploading chunk {index}. Took {response.elapsed.total_seconds()} sec")
 

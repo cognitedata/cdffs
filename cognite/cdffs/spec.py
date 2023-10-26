@@ -28,7 +28,13 @@ from .memory_upload_strategy import InMemoryUploadStrategy
 from .upload_strategy import UploadStrategy
 
 logger = logging.getLogger(__name__)
-_COMMON_EXCEPTIONS = (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError)
+_COMMON_EXCEPTIONS = (
+    CogniteAuthError,
+    CogniteConnectionError,
+    CogniteConnectionRefused,
+    CogniteAPIError,
+    requests.exceptions.RequestException,
+)
 _CACHE_SLEEP_INTERVAL = 5
 
 
@@ -725,7 +731,7 @@ class CdfFile(AbstractBufferedFile):
 
             return final
 
-        except (requests.exceptions.RequestException, _COMMON_EXCEPTIONS) as error:  # type: ignore
+        except _COMMON_EXCEPTIONS as error:  # type: ignore
             raise RuntimeError from error
 
     def _fetch_range(self, start: int, end: int) -> Any:
