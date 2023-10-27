@@ -1,6 +1,7 @@
 # type: ignore
 # pylint: disable=missing-function-docstring
 import os
+import re
 
 import pytest
 import responses
@@ -99,6 +100,8 @@ def mock_files_ls_error_response():
 @pytest.fixture
 def mock_files_upload_response(request):
     with responses.RequestsMock() as response:
+        azure_upload_url_pattern = "https://azure.blob-test.com/uploaddata"
+
         upload_response_body = {
             "externalId": "df.csv",
             "name": "df.csv",
@@ -113,7 +116,7 @@ def mock_files_upload_response(request):
             "labels": [],
             "createdTime": 1667464449,
             "lastUpdatedTime": 1667464449,
-            "uploadUrl": "https://azure.blob-test.com/uploaddata",
+            "uploadUrl": f"{azure_upload_url_pattern}?token=123",
         }
 
         update_response_body = {
@@ -137,14 +140,12 @@ def mock_files_upload_response(request):
         }
 
         write_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files"
-        azure_upload_url_pattern = "https://azure.blob-test.com/uploaddata"
         file_update_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files/update"
         response.assert_all_requests_are_fired = False
 
         if request.param == "successful":
             response.add(response.POST, write_url_pattern, status=200, json=upload_response_body)
-            response.add(response.PUT, azure_upload_url_pattern, status=200, json={})
-            response.add(response.PUT, f"{azure_upload_url_pattern}&comp=blocklist", status=200, json={})
+            response.add(response.PUT, re.compile(rf"{azure_upload_url_pattern}\?.*"), status=201, json={})
             response.add(response.POST, file_update_pattern, status=200, json=update_response_body)
         else:
             response.add(
