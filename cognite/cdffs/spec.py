@@ -19,6 +19,7 @@ from fsspec import AbstractFileSystem
 from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 from fsspec.utils import DEFAULT_BLOCK_SIZE
+from retry import retry
 
 from .az_upload_strategy import AzureUploadStrategy
 from .credentials import get_connection_config
@@ -685,6 +686,7 @@ class CdfFile(AbstractBufferedFile):
             **kwargs,
         )
 
+    @retry(exceptions=_COMMON_EXCEPTIONS, tries=2)
     def _upload_chunk(self, final: bool = False) -> bool:
         """Upload file contents to CDF.
 
@@ -698,41 +700,38 @@ class CdfFile(AbstractBufferedFile):
             RuntimeError: When an unexpected error occurred.
         """
 
+        @retry(tries=3, logger=logging.getLogger("upload_chunk"))
         def strategy_submit(data: bytes, index: int) -> None:
             self.write_strategy.upload_chunk(data, index)
 
-        try:
-            buffer_length = len(self.buffer.getvalue())
-            blocks = [self.buffer.getvalue()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
+        buffer_length = len(self.buffer.getvalue())
+        blocks = [self.buffer.getvalue()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
 
-            logging.info(f"{len(blocks)} full blocks discovered")
+        logging.info(f"{len(blocks)} full blocks discovered")
 
-            # Upload blocks in parallel using ThreadPoolExecutor
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                for arg in zip(blocks, range(self.index, self.index + len(blocks))):
-                    executor.submit(strategy_submit, arg[0], arg[1])
+        # Upload blocks in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for arg in zip(blocks, range(self.index, self.index + len(blocks))):
+                executor.submit(strategy_submit, arg[0], arg[1])
 
-            # Update the index
-            self.index += len(blocks)
+        # Update the index
+        self.index += len(blocks)
 
-            # If it's the final block, then send a merge request
-            if final:
-                total_size = self.write_strategy.merge_chunks()
+        # If it's the final block, then send a merge request
+        if final:
+            total_size = self.write_strategy.merge_chunks()
 
-                self.cognite_client.files.update(
-                    item=FileMetadataUpdate(external_id=self.external_id).metadata.add({"size": total_size})
-                )
+            self.cognite_client.files.update(
+                item=FileMetadataUpdate(external_id=self.external_id).metadata.add({"size": total_size})
+            )
 
-                self.fs.cache_path(
-                    self.root_dir,
-                    self.external_id,
-                    total_size,
-                )
+            self.fs.cache_path(
+                self.root_dir,
+                self.external_id,
+                total_size,
+            )
 
-            return final
-
-        except _COMMON_EXCEPTIONS as error:  # type: ignore
-            raise RuntimeError from error
+        return final
 
     def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.
