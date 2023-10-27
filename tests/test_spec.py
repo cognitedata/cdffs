@@ -1,6 +1,7 @@
 # type: ignore
 # pylint: disable=missing-function-docstring
 import os
+import re
 
 import pytest
 import responses
@@ -11,21 +12,6 @@ from cognite.client.data_classes.files import FileMetadata
 from cognite.cdffs.spec import CdfFileSystem
 
 global_config.disable_pypi_version_check = True
-
-
-@pytest.mark.usefixtures("mock_cognite_client")
-@pytest.fixture(scope="function")
-def fs():
-    inp = {
-        "connection_config": ClientConfig(
-            client_name="foobar",
-            base_url="https://foobar.cognitedata.com",
-            project="foobar",
-            credentials=Token("dummy-token"),
-        )
-    }
-    fs = CdfFileSystem(**inp)
-    return fs
 
 
 @pytest.fixture
@@ -114,6 +100,8 @@ def mock_files_ls_error_response():
 @pytest.fixture
 def mock_files_upload_response(request):
     with responses.RequestsMock() as response:
+        azure_upload_url_pattern = "https://azure.blob-test.com/uploaddata"
+
         upload_response_body = {
             "externalId": "df.csv",
             "name": "df.csv",
@@ -128,20 +116,41 @@ def mock_files_upload_response(request):
             "labels": [],
             "createdTime": 1667464449,
             "lastUpdatedTime": 1667464449,
-            "uploadUrl": "https://azure.blob-test.com/uploaddata",
+            "uploadUrl": f"{azure_upload_url_pattern}?token=123",
         }
 
-        wirte_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files?overwrite=True"
-        azure_upload_url_pattern = "https://azure.blob-test.com/uploaddata"
+        update_response_body = {
+            "items": [
+                {
+                    "externalId": "df.csv",
+                    "name": "df.csv",
+                    "directory": "/sample_data/out/sample/",
+                    "source": "test",
+                    "mimeType": "text/plain",
+                    "metadata": {"size": 100},
+                    "dataSetId": 783443182507908,
+                    "id": 783443232507908,
+                    "uploaded": True,
+                    "uploadedTime": 1667464449,
+                    "labels": [],
+                    "createdTime": 1667464449,
+                    "lastUpdatedTime": 1667464449,
+                }
+            ]
+        }
+
+        write_url_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files"
+        file_update_pattern = "https://foobar.cognitedata.com/api/v1/projects/foobar/files/update"
         response.assert_all_requests_are_fired = False
 
         if request.param == "successful":
-            response.add(response.POST, wirte_url_pattern, status=200, json=upload_response_body)
-            response.add(response.PUT, azure_upload_url_pattern, status=200, json={})
+            response.add(response.POST, write_url_pattern, status=200, json=upload_response_body)
+            response.add(response.PUT, re.compile(rf"{azure_upload_url_pattern}\?.*"), status=201, json={})
+            response.add(response.POST, file_update_pattern, status=200, json=update_response_body)
         else:
             response.add(
                 response.POST,
-                wirte_url_pattern,
+                write_url_pattern,
                 status=500,
                 json={},
             )
@@ -533,23 +542,40 @@ def test_makedirs_exception(fs, exist_ok_flag, test_input, expected_result):
 
 
 @pytest.mark.parametrize(
-    "test_path, test_mode, test_data, expected_len, mock_files_upload_response",
+    "filesystem, test_path, test_mode, test_data, expected_len, mock_files_upload_response",
     [
         (
+            "fs",
             "/sample_data/out/sample/df.csv",
             "wb",
             ",A,B\n0,1,2\n1,4,5\n",
             17,
             "successful",
-        )
+        ),
+        (
+            "az_fs",
+            "/sample_data/out/sample/df.csv",
+            "wb",
+            ",A,B\n0,1,2\n1,4,5\n",
+            17,
+            "successful",
+        ),
+        (
+            "gcp_fs",
+            "/sample_data/out/sample/df.csv",
+            "wb",
+            ",A,B\n0,1,2\n1,4,5\n",
+            17,
+            "successful",
+        ),
     ],
-    indirect=["mock_files_upload_response"],
+    indirect=["filesystem", "mock_files_upload_response"],
 )
 @pytest.mark.usefixtures("mock_files_upload_response")
-def test_open_write(fs, test_path, test_mode, test_data, expected_len):
-    fs.file_metadata = FileMetadata(metadata={})
-    cdf_file = fs.open(test_path, mode=test_mode)
-    test_len = cdf_file.write(test_data.encode("utf-8"))
+def test_open_write(filesystem, test_path, test_mode, test_data, expected_len):
+    with filesystem.open(test_path, mode=test_mode, file_metadata=FileMetadata(metadata={}), block_size=5) as cdf_file:
+        test_len = cdf_file.write(test_data.encode("utf-8"))
+
     assert test_len == expected_len
 
 

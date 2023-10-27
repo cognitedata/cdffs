@@ -136,3 +136,8 @@ Changes are grouped as follows
 - Dependency updates for docs & source code.
 
 [unreleased]:
+
+## [0.2.9] - 2023-10-26
+
+### Added
+- Support for native multipart file upload for CDF in Azure and Google. 

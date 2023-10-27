@@ -1,11 +1,13 @@
 """File System Specification for CDF Files."""
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import requests
 from cognite.client import ClientConfig, CogniteClient
-from cognite.client.data_classes.files import FileMetadata
+from cognite.client.data_classes.files import FileMetadata, FileMetadataUpdate
 from cognite.client.exceptions import (
     CogniteAPIError,
     CogniteAuthError,
@@ -16,12 +18,24 @@ from cognite.client.exceptions import (
 from fsspec import AbstractFileSystem
 from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
+from fsspec.utils import DEFAULT_BLOCK_SIZE
+from retry import retry
 
+from .az_upload_strategy import AzureUploadStrategy
 from .credentials import get_connection_config
 from .file_handler import FileException, FileHandler
+from .gcp_upload_strategy import GoogleUploadStrategy
+from .memory_upload_strategy import InMemoryUploadStrategy
+from .upload_strategy import UploadStrategy
 
 logger = logging.getLogger(__name__)
-_COMMON_EXCEPTIONS = (CogniteAuthError, CogniteConnectionError, CogniteConnectionRefused, CogniteAPIError)
+_COMMON_EXCEPTIONS = (
+    CogniteAuthError,
+    CogniteConnectionError,
+    CogniteConnectionRefused,
+    CogniteAPIError,
+    requests.exceptions.RequestException,
+)
 _CACHE_SLEEP_INTERVAL = 5
 
 
@@ -48,6 +62,7 @@ class CdfFileSystem(AbstractFileSystem):
         self,
         connection_config: Optional[ClientConfig] = None,
         file_metadata: FileMetadata = FileMetadata(metadata={}),
+        upload_strategy: str = "inmemory",
         **kwargs: Optional[Any],
     ) -> None:
         """Initialize the CdfFileSystem and creates a connection to CDF.
@@ -78,6 +93,7 @@ class CdfFileSystem(AbstractFileSystem):
         self.download_retries: bool = kwargs.get("download_retries", True)  # type: ignore
         self.file_cache: Dict[str, Dict[str, Any]] = {}
         self.file_handler: FileHandler = FileHandler()
+        self.upload_strategy = upload_strategy
 
         # Create a connection to Cdf
         self.do_connect(connection_config, **kwargs)
@@ -461,7 +477,7 @@ class CdfFileSystem(AbstractFileSystem):
         self,
         path: str,
         mode: str = "rb",
-        block_size: str = "default",
+        block_size: int = DEFAULT_BLOCK_SIZE,
         cache_options: Optional[Dict[Any, Any]] = None,
         **kwargs: Optional[Any],
     ) -> "CdfFile":
@@ -612,7 +628,7 @@ class CdfFile(AbstractBufferedFile):
         directory: str,
         external_id: str,
         mode: str = "rb",
-        block_size: str = "default",
+        block_size: int = DEFAULT_BLOCK_SIZE,
         cache_options: Optional[Union[Dict[Any, Any], None]] = None,
         **kwargs: Optional[Any],
     ) -> None:
@@ -625,19 +641,41 @@ class CdfFile(AbstractBufferedFile):
             directory (str): Root directory for the file.
             external_id (str): External Id for the file.
             mode (str): Mode to work with the file.
-            block_size (str): Block size to read/write the file.
+            block_size (int): Block size to read/write the file.
             cache_options (str): Additional caching options for the file.
             **kwargs (Optional[Any]): Set of keyword arguments to read/write the file contents.
         """
+        self.index = 0
         self.cognite_client: CogniteClient = cognite_client
         self.root_dir: str = directory
         self.external_id: str = external_id
         self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
-        self.file_metadata: FileMetadata = FileMetadata(metadata={})
+        self.file_metadata: FileMetadata = FileMetadata(
+            **{
+                **fs.file_metadata.dump(),
+                "name": Path(path).name,
+                "external_id": self.external_id,
+                "directory": self.root_dir,
+            }
+        )
 
         # User can use a file metadata for each file when they write the files.
         if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
-            self.file_metadata = kwargs.pop("file_metadata")
+            self.file_metadata = FileMetadata(
+                **{
+                    **self.file_metadata.dump(),
+                    **kwargs.pop("file_metadata").dump(),  # type: ignore
+                }
+            )
+
+        self.write_strategy: UploadStrategy
+
+        if fs.upload_strategy == "google" and mode != "rb":
+            self.write_strategy = GoogleUploadStrategy(self.file_metadata, self.cognite_client)
+        elif fs.upload_strategy == "azure" and mode != "rb":
+            self.write_strategy = AzureUploadStrategy(self.file_metadata, self.cognite_client)
+        elif mode != "rb":
+            self.write_strategy = InMemoryUploadStrategy(self.file_metadata, self.cognite_client)
 
         super().__init__(
             fs,
@@ -648,6 +686,7 @@ class CdfFile(AbstractBufferedFile):
             **kwargs,
         )
 
+    @retry(exceptions=_COMMON_EXCEPTIONS, tries=2)
     def _upload_chunk(self, final: bool = False) -> bool:
         """Upload file contents to CDF.
 
@@ -660,37 +699,39 @@ class CdfFile(AbstractBufferedFile):
         Raises:
             RuntimeError: When an unexpected error occurred.
         """
-        try:
-            if final:
-                file_metadata = self.file_metadata.metadata or self.fs.file_metadata.metadata
-                file_metadata = (
-                    dict(file_metadata, **{"size": self.buffer.getbuffer().nbytes})
-                    if file_metadata
-                    else {"size": self.buffer.getbuffer().nbytes}
-                )
-                response = self.cognite_client.files.upload_bytes(
-                    content=self.buffer.getbuffer(),
-                    name=Path(self.external_id).name,
-                    external_id=self.external_id,
-                    directory=self.root_dir,
-                    source=self.file_metadata.source or self.fs.file_metadata.source,
-                    asset_ids=self.file_metadata.asset_ids or self.fs.file_metadata.asset_ids,
-                    data_set_id=self.file_metadata.data_set_id or self.fs.file_metadata.data_set_id,
-                    mime_type=self.file_metadata.mime_type or self.fs.file_metadata.mime_type,
-                    geo_location=self.file_metadata.geo_location or self.fs.file_metadata.geo_location,
-                    metadata=file_metadata,
-                    overwrite=True,
-                )
 
-                self.fs.cache_path(
-                    self.root_dir,
-                    self.external_id,
-                    int(response.metadata.get("size")) if response.metadata.get("size") else -1,
-                )
+        @retry(tries=3, logger=logging.getLogger("upload_chunk"))
+        def strategy_submit(data: bytes, index: int) -> None:
+            self.write_strategy.upload_chunk(data, index)
 
-            return final
-        except _COMMON_EXCEPTIONS as cognite_exp:
-            raise RuntimeError from cognite_exp
+        buffer_length = len(self.buffer.getvalue())
+        blocks = [self.buffer.getvalue()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
+
+        logging.info(f"{len(blocks)} full blocks discovered")
+
+        # Upload blocks in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for arg in zip(blocks, range(self.index, self.index + len(blocks))):
+                executor.submit(strategy_submit, arg[0], arg[1])
+
+        # Update the index
+        self.index += len(blocks)
+
+        # If it's the final block, then send a merge request
+        if final:
+            total_size = self.write_strategy.merge_chunks()
+
+            self.cognite_client.files.update(
+                item=FileMetadataUpdate(external_id=self.external_id).metadata.add({"size": total_size})
+            )
+
+            self.fs.cache_path(
+                self.root_dir,
+                self.external_id,
+                total_size,
+            )
+
+        return final
 
     def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.

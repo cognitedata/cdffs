@@ -38,3 +38,10 @@ the files from/to CDF Files.
 
 .. literalinclude:: ./../../examples/geopandas_parquet.py
    :language: python
+
+zip file
+^^^^^^^^^
+Example to read folder from local filesystem and write `zip` file to CDF Files using `ZipFile` package.
+
+.. literalinclude:: ./../../examples/zip.py
+   :language: python
