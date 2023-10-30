@@ -2,6 +2,7 @@
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -19,7 +20,7 @@ from fsspec import AbstractFileSystem
 from fsspec.caching import AllBytes
 from fsspec.spec import AbstractBufferedFile
 from fsspec.utils import DEFAULT_BLOCK_SIZE
-from retry import retry
+from tenacity import after_log, retry, stop_after_attempt, wait_fixed
 
 from .az_upload_strategy import AzureUploadStrategy
 from .credentials import get_connection_config
@@ -167,7 +168,7 @@ class CdfFileSystem(AbstractFileSystem):
         elif self._suffix_exists(path):
             external_id_prefix = [x for x in Path(path).parts if Path(x).suffix][0]
             root_dir = path[: path.find(external_id_prefix)].strip("/")
-            external_id = path[path.find(external_id_prefix) :]
+            external_id = path[path.find(external_id_prefix) :]  # noqa
 
         elif Path(path).parts and not validate_suffix:
             external_id_prefix = ""
@@ -187,7 +188,11 @@ class CdfFileSystem(AbstractFileSystem):
             file_size (int): File size (in bytes).
         """
         inp_path = Path(root_dir, external_id)
-        file_meta = {"type": "file", "name": str(inp_path).lstrip("/"), "size": file_size}
+        file_meta = {
+            "type": "file",
+            "name": str(inp_path).lstrip("/"),
+            "size": file_size,
+        }
         parent_path = str(inp_path.parent).lstrip("/")
 
         if parent_path not in self.dircache:
@@ -272,7 +277,10 @@ class CdfFileSystem(AbstractFileSystem):
                 if not file_met.external_id:
                     # Files are expected to have a valid external id.
                     continue
-                inp_path = Path(file_met.directory if file_met.directory else "/", file_met.external_id)
+                inp_path = Path(
+                    file_met.directory if file_met.directory else "/",
+                    file_met.external_id,
+                )
                 file_name = str(inp_path).lstrip("/")
                 file_size = int(file_met.metadata.get("size", -1)) if file_met.metadata else -1
                 file_meta = {"type": "file", "name": file_name, "size": file_size}
@@ -280,7 +288,10 @@ class CdfFileSystem(AbstractFileSystem):
                 # Add directory information.
                 parent_path = str(inp_path.parent).lstrip("/")
                 if parent_path not in directories:
-                    directories[parent_path] = {"type": "directory", "name": parent_path.lstrip("/")}
+                    directories[parent_path] = {
+                        "type": "directory",
+                        "name": parent_path.lstrip("/"),
+                    }
 
                 if file_name not in _file_write_cache:
                     if parent_path not in self.dircache:
@@ -508,7 +519,10 @@ class CdfFileSystem(AbstractFileSystem):
         )
 
     def read_file(
-        self, external_id: str, start_byte: Union[int, None] = None, end_byte: Union[int, None] = None
+        self,
+        external_id: str,
+        start_byte: Union[int, None] = None,
+        end_byte: Union[int, None] = None,
     ) -> Any:
         """Open and read the contents of a file.
 
@@ -547,7 +561,11 @@ class CdfFileSystem(AbstractFileSystem):
                 raise FileNotFoundError from cognite_exp
 
     def cat(
-        self, path: Union[str, list], recursive: bool = False, on_error: str = "raise", **kwargs: Optional[Any]
+        self,
+        path: Union[str, list],
+        recursive: bool = False,
+        on_error: str = "raise",
+        **kwargs: Optional[Any],
     ) -> Union[bytes, Any, Dict[str, bytes]]:
         """Open and read the contents of a file(s).
 
@@ -669,6 +687,10 @@ class CdfFile(AbstractBufferedFile):
             )
 
         self.write_strategy: UploadStrategy
+        if mode == "wb":
+            self.buffer = BytesIO()
+            self.offset = None
+        self.buffered = False
 
         if fs.upload_strategy == "google" and mode != "rb":
             self.write_strategy = GoogleUploadStrategy(self.file_metadata, self.cognite_client)
@@ -676,6 +698,7 @@ class CdfFile(AbstractBufferedFile):
             self.write_strategy = AzureUploadStrategy(self.file_metadata, self.cognite_client)
         elif mode != "rb":
             self.write_strategy = InMemoryUploadStrategy(self.file_metadata, self.cognite_client)
+            self.buffered = True  # InMemoryUpload requires all data to be cached until last chunk comes
 
         super().__init__(
             fs,
@@ -686,7 +709,6 @@ class CdfFile(AbstractBufferedFile):
             **kwargs,
         )
 
-    @retry(exceptions=_COMMON_EXCEPTIONS, tries=2)
     def _upload_chunk(self, final: bool = False) -> bool:
         """Upload file contents to CDF.
 
@@ -700,14 +722,19 @@ class CdfFile(AbstractBufferedFile):
             RuntimeError: When an unexpected error occurred.
         """
 
-        @retry(tries=3, logger=logging.getLogger("upload_chunk"))
+        @retry(
+            reraise=False,
+            stop=stop_after_attempt(5),
+            wait=wait_fixed(0.5),
+            after=after_log(logging.getLogger("cdffs"), logging.INFO),
+        )
         def strategy_submit(data: bytes, index: int) -> None:
             self.write_strategy.upload_chunk(data, index)
 
         buffer_length = len(self.buffer.getvalue())
-        blocks = [self.buffer.getvalue()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)]
-
-        logging.info(f"{len(blocks)} full blocks discovered")
+        blocks = [
+            self.buffer.getvalue()[i : i + self.blocksize] for i in range(0, buffer_length, self.blocksize)  # noqa
+        ]
 
         # Upload blocks in parallel using ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -719,11 +746,28 @@ class CdfFile(AbstractBufferedFile):
 
         # If it's the final block, then send a merge request
         if final:
-            total_size = self.write_strategy.merge_chunks()
 
-            self.cognite_client.files.update(
-                item=FileMetadataUpdate(external_id=self.external_id).metadata.add({"size": total_size})
+            @retry(
+                stop=stop_after_attempt(5),
+                wait=wait_fixed(0.5),
+                after=after_log(logging.getLogger("cdffs"), logging.INFO),
             )
+            def safe_merge() -> int:
+                return self.write_strategy.merge_chunks()
+
+            total_size = safe_merge()
+
+            @retry(
+                stop=stop_after_attempt(5),
+                wait=wait_fixed(0.5),
+                after=after_log(logging.getLogger("cdffs"), logging.INFO),
+            )
+            def safe_file_update(_size: int) -> None:
+                self.cognite_client.files.update(
+                    item=FileMetadataUpdate(external_id=self.external_id).metadata.add({"size": _size})
+                )
+
+            safe_file_update(total_size)
 
             self.fs.cache_path(
                 self.root_dir,
@@ -731,7 +775,7 @@ class CdfFile(AbstractBufferedFile):
                 total_size,
             )
 
-        return final
+        return final if self.buffered else True  # tell fsspec to cache buffer or not
 
     def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.

@@ -18,18 +18,24 @@ class GoogleUploadStrategy(UploadStrategy):
         self.chunk_cache: Dict = OrderedDict()  # Store chunks in the order received
         self.last_written_index = -1  # The last consecutive chunk index that was written
         self.last_written_byte = -1  # The last byte position that was written
+        self.logger = logging.getLogger("cdffs.GoogleUploadStrategy")
 
     def _write_chunk(self, index: int, data: bytes) -> None:
         start_byte = self.last_written_byte + 1
         end_byte = start_byte + len(data) - 1
 
-        headers = {"Content-Length": str(len(data)), "Content-Range": f"bytes {start_byte}-{end_byte}/*"}
+        headers = {
+            "Content-Length": str(len(data)),
+            "Content-Range": f"bytes {start_byte}-{end_byte}/*",
+        }
 
         response = self.session.put(self.params["upload_url"], headers=headers, data=data)
         response.raise_for_status()
         self.indexes.append(index)
 
-        logging.info(f"Finished uploading chunk {index}. Took {response.elapsed.total_seconds()} sec")
+        self.logger.debug(
+            f"Finished uploading chunk {index}=[{start_byte}:{end_byte}]. Took {response.elapsed.total_seconds()} sec"
+        )
 
         # Update the last written byte position
         self.last_written_byte = end_byte
@@ -46,7 +52,7 @@ class GoogleUploadStrategy(UploadStrategy):
                 del self.chunk_cache[next_index]  # Remove the written chunk from cache
                 self.last_written_index = next_index
 
-        logging.info(f"Received chunk {index}. Cache size: {len(self.chunk_cache)} chunks")
+        self.logger.debug(f"Received chunk {index}. Cache size: {len(self.chunk_cache)} chunks")
 
     def merge_chunks(self) -> int:
         """Google Cloud Storage handles merging internally. So, this method is a no-op for the GCS strategy."""
