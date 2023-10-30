@@ -141,3 +141,8 @@ Changes are grouped as follows
 
 ### Added
 - Support for native multipart file upload for CDF in Azure and Google. 
+
+## [0.2.10] - 2023-11-1
+
+### Fixed
+- Fix internal cache accumulated if big files are handled with native multipart implementation 
