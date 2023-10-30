@@ -775,7 +775,7 @@ class CdfFile(AbstractBufferedFile):
                 total_size,
             )
 
-        return not self.buffered  # tell fsspec to cache buffer or not
+        return final if self.buffered else True  # tell fsspec to cache buffer or not
 
     def _fetch_range(self, start: int, end: int) -> Any:
         """Read file contents from CDF.
