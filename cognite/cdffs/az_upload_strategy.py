@@ -15,6 +15,7 @@ class AzureUploadStrategy(UploadStrategy):
         """Initializer."""
         super().__init__(metadata, cognite_client)
         self.total_size = 0
+        self.logger = logging.getLogger("cdffs.AzureUploadStrategy")
 
     def _generate_block_blob_block_id(self, index: int, block_name_prefix: str = __file__.__str__()) -> str:
         block_id = f"{block_name_prefix.ljust(19, 'x')[:19]}{index:05}".encode("utf-8")
@@ -37,10 +38,14 @@ class AzureUploadStrategy(UploadStrategy):
             },
         )
         response.raise_for_status()
-        self.total_size += len(data)  # track total object size
         with self.lock:
+            self.total_size += len(data)  # track total object size
             self.indexes.append(index)
-        logging.info(f"Finished uploading block {index}. Took {response.elapsed.total_seconds()} sec")
+
+        self.logger.debug(
+            f"Finished uploading block {index}. Current file size: {self.total_size}. "
+            f"Took {response.elapsed.total_seconds()} sec"
+        )
 
     def merge_chunks(self) -> int:
         """Merge all uploaded blocks into the final blob."""
@@ -62,5 +67,8 @@ class AzureUploadStrategy(UploadStrategy):
             },
         )
         response.raise_for_status()
+        self.logger.debug(
+            f"Merged blocks. Total file size: {self.total_size}. " f"Took {response.elapsed.total_seconds()} sec"
+        )
 
         return self.total_size
