@@ -15,7 +15,7 @@ zarr = "^2.16.1"
 dask = "^2023.7.1"
 xarray = "^2023.9.0"
 geodatasets = "^2023.3.0"
-geopandas = "^0.13.2"
+geopandas = "^0.14.0"
 
 [tool.poetry.group.dev.dependencies]
 types-requests = "^2.28.11.5"
