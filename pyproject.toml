@@ -10,7 +10,7 @@ packages = [
 ]
 [tool.poetry.group.test.dependencies]
 pandas = "^2.1.1"
-pyarrow = "^13.0.0"
+pyarrow = "^14.0.0"
 zarr = "^2.16.1"
 dask = "^2023.7.1"
 xarray = "^2023.9.0"
