@@ -670,7 +670,7 @@ class CdfFile(AbstractBufferedFile):
         self.all_bytes_caching: bool = "cache_type" in kwargs and kwargs["cache_type"] == "all"
         self.file_metadata: FileMetadata = FileMetadata(
             **{
-                **fs.file_metadata.dump(),
+                **fs.file_metadata.dump(camel_case=False),
                 "name": Path(path).name,
                 "external_id": self.external_id,
                 "directory": self.root_dir,
@@ -681,8 +681,8 @@ class CdfFile(AbstractBufferedFile):
         if isinstance(kwargs.get("file_metadata"), FileMetadata) and mode != "rb":
             self.file_metadata = FileMetadata(
                 **{
-                    **self.file_metadata.dump(),
-                    **kwargs.pop("file_metadata").dump(),  # type: ignore
+                    **self.file_metadata.dump(camel_case=False),
+                    **kwargs.pop("file_metadata").dump(camel_case=False),  # type: ignore
                 }
             )
 
