@@ -147,7 +147,7 @@ Changes are grouped as follows
 ### Fixed
 - Fix internal cache accumulated if big files are handled with native multipart implementation
 
-## [0.2.11] - 2023-11-16
+## [0.3.0] - 2023-11-16
 
 ### Fixed
 - Dependency updates for docs & source code.
