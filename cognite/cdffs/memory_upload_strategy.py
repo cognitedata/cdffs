@@ -26,5 +26,5 @@ class InMemoryUploadStrategy(UploadStrategy):
     def merge_chunks(self) -> int:
         """Merge all uploaded blocks into the final blob."""
         content = b"".join([self.blocks[key] for key in sorted(self.blocks.keys())])
-        self.cognite_client.files.upload_bytes(content=content, **self.metadata.dump(), overwrite=True)
+        self.cognite_client.files.upload_bytes(content=content, **self.metadata.dump(camel_case=False), overwrite=True)
         return len(content)
