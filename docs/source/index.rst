@@ -1,7 +1,7 @@
 Welcome to cognite-cdffs's documentation!
 =========================================
 
-A file-system interface (`cdffs`) to allow users to work with CDF Files using `fsspec <https://filesystem-spec.readthedocs.io/en/latest/>`_
+A file-system interface (`cdffs`) that allow users to work with CDF (Cognite Data Fusion) Files using `fsspec <https://filesystem-spec.readthedocs.io/en/latest/>`_
 supported/compatible python packages (`pandas`, `xarray` etc). `cdffs` uses `cognite-sdk-python <https://cognite-sdk-python.readthedocs-hosted.com/en/latest/index.html>`_ to work with CDF Files.
 
 Refer `fsspec documentation <https://filesystem-spec.readthedocs.io/en/latest/#who-uses-fsspec>`_ to get

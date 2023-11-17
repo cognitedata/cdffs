@@ -1,7 +1,7 @@
-Cognite cdffs
-=============
+cdffs
+=====
 
-A file-system interface to allow users to work with CDF Files using the fsspec supported/compatible python packages.
+A file-system interface to allow users to work with CDF (Cognite Data Fusion) Files using the fsspec supported/compatible python packages.
 
 `fsspec` provides an abstract file system interface to work with local/cloud storages and based on the
 protocol name (example, `s3` or `abfs`) provided in the path, `fsspec` translates the incoming requests
