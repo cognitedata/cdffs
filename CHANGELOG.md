@@ -150,4 +150,12 @@ Changes are grouped as follows
 ## [0.3.0] - 2023-11-16
 
 ### Fixed
+- Support for cognite-sdk 7.x.x + versions.
 - Dependency updates for docs & source code.
+
+## [0.3.1] - 2023-11-17
+
+### Fixed
+- Fixes to render the readthedocs documentation properly.
+- Dependency updates for docs & source code.
+
