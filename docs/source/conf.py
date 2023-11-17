@@ -22,7 +22,7 @@ release = toml.load("./../../pyproject.toml")["tool"]["poetry"]["version"]
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx_rtd_theme", "sphinx.ext.autosummary", "sphinx.ext.autodoc"]
+extensions = ["sphinx_rtd_theme", "sphinx.ext.autosummary", "sphinx.ext.napoleon"]
 
 exclude_patterns = []
 autosummary_generate = True
