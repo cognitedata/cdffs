@@ -159,3 +159,9 @@ Changes are grouped as follows
 - Fixes to render the readthedocs documentation properly.
 - Dependency updates for docs & source code.
 
+## [0.3.2] - 2023-11-21
+
+### Fixed
+- Added the environment name for the Github workflows.
+- Dependency updates for source code.
+
