@@ -165,3 +165,8 @@ Changes are grouped as follows
 - Added the environment name for the Github workflows.
 - Dependency updates for source code.
 
+## [0.3.3] - 2024-02-01
+
+### Fixed
+- Dependency updates for source code.
+- Updated Github actions to use the latest versions.
