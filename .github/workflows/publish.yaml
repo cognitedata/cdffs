@@ -41,7 +41,7 @@ jobs:
           poetry run pytest tests/ -v --cov-report xml:coverage.xml --cov
           poetry run coverage xml
 
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
 
