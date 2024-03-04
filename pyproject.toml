@@ -70,7 +70,7 @@ python = ">=3.9.10,<3.13"
 cognite-sdk = "^7.26.0"
 fsspec = "^2024.2.0"
 requests = "^2.31.0"
-twine = "^4.0.2"
+twine = "^5.0.0"
 pydantic = {version =">=1.10.7"}
 python-dotenv = "^1.0.1"
 pydantic-settings = { version = "^2.0.3", optional = true}
