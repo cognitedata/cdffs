@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cognite-cdffs"
-version = "0.3.3"
+version = "0.3.4"
 description = "File System Interface for CDF Files"
 license = "Apache-2.0"
 authors = ["Infant Alex <infant.alex@cognite.com>"]
@@ -9,23 +9,22 @@ packages = [
     { include="cognite", from="." },
 ]
 [tool.poetry.group.test.dependencies]
-pandas = "^2.2.0"
+pandas = "^2.2.1"
 pyarrow = "^15.0.0"
-zarr = "^2.16.1"
-dask = "^2024.1.1"
-xarray = "^2024.1.1"
+zarr = "^2.17.0"
+dask = "^2024.2.1"
+xarray = "^2024.2.0"
 geodatasets = "^2023.12.0"
 geopandas = "^0.14.3"
 
 [tool.poetry.group.dev.dependencies]
-types-requests = "^2.28.11.5"
+types-requests = "^2.31.0.20240218"
 pytest-cov = "^4.1.0"
-black = "^24.1.1"
-responses = "^0.24.1"
+black = "^24.2.0"
+responses = "^0.25.0"
 flake8 = "^7.0.0"
-pre-commit = "^3.6.0"
+pre-commit = "^3.6.2"
 flake8-pyproject = "^1.2.3"
-twine = "^4.0.2"
 toml = "^0.10.2"
 sphinx-rtd-theme = "^2.0.0"
 
@@ -68,16 +67,17 @@ commands =
 
 [tool.poetry.dependencies]
 python = ">=3.9.10,<3.13"
-cognite-sdk = "^7.16.0"
-fsspec = "^2023.12.2"
+cognite-sdk = "^7.26.0"
+fsspec = "^2024.2.0"
 requests = "^2.31.0"
 twine = "^4.0.2"
-pydantic = "^2.6.0"
+pydantic = {version =">=1.10.7"}
 python-dotenv = "^1.0.1"
-pydantic-settings = "^2.0.3"
+pydantic-settings = { version = "^2.0.3", optional = true}
 tenacity = "^8.2.3"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.extras]
+settings = ["pydantic-settings"]
 
 [build-system]
 requires = ["poetry>=0.12"]

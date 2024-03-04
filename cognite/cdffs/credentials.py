@@ -1,11 +1,20 @@
 """Construct cognite client config from environment variables."""
+
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Union
 
 from cognite.client import ClientConfig, CogniteClient
 from cognite.client.credentials import OAuthClientCredentials, Token
-from pydantic import ConfigDict, SecretStr, field_validator
-from pydantic_settings import BaseSettings
+
+try:
+    from pydantic import BaseSettings, ConfigDict, SecretStr, validator
+
+    is_pydantic_v2 = False
+except ImportError:
+    from pydantic import ConfigDict, SecretStr, field_validator
+    from pydantic_settings import BaseSettings
+
+    is_pydantic_v2 = True
 
 
 def validate_scopes(cls: Any, value: str) -> Optional[List]:
@@ -70,7 +79,10 @@ class FsOAuthCredentials(FsCredentials, FsConfig):
     scopes: Optional[Union[str, List]] = None
 
     # Validator
-    _scopes = field_validator("scopes")(validate_scopes)
+    if is_pydantic_v2:
+        _scopes = field_validator("scopes")(validate_scopes)
+    else:
+        _scopes = validator("scopes")(validate_scopes)
 
     def get_credentials(self) -> OAuthClientCredentials:
         """Construct credentials based on environment variables.
@@ -112,11 +124,21 @@ def get_connection_config(env_file: str) -> CogniteClient:
     """Construct Cognite Client from environment variables."""
     credentials = FsOAuthCredentials(_env_file=env_file)
     connection_config = None
-    if all(value is not None for _, value in credentials.model_dump().items()):
+
+    if is_pydantic_v2:
+        credentials_dump = credentials.model_dump().items()
+    else:
+        credentials_dump = credentials.dict().items()
+
+    if all(value is not None for _, value in credentials_dump):
         connection_config = credentials.get_client_config()
     else:
         token = FsToken(_env_file=env_file)
-        if all(value is not None for _, value in token.model_dump().items()):
+        if is_pydantic_v2:
+            token_dump = token.model_dump().items()
+        else:
+            token_dump = token.dict().items()
+        if all(value is not None for _, value in token_dump):
             connection_config = token.get_client_config()
 
     return connection_config
