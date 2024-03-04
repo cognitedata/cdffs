@@ -73,7 +73,7 @@ requests = "^2.31.0"
 twine = "^4.0.2"
 pydantic = {version =">=1.10.7"}
 python-dotenv = "^1.0.1"
-pydantic-settings = {version="^2.0.3", optional = true}
+pydantic-settings = { version = "^2.0.3", optional = true}
 tenacity = "^8.2.3"
 
 [tool.poetry.extras]
