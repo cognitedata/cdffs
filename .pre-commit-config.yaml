@@ -19,12 +19,13 @@ repos:
     rev: v1.7.0
     hooks:
       - id: mypy
-        exclude: ^(tests/|examples/|docs/)
+        exclude: ^(tests/|examples/|docs/|vendor/)
         additional_dependencies: ["types-requests", "types-retry"]
   - repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
       - id: flake8
+        exclude: ^(vendor/)
         additional_dependencies: ["flake8-pyproject"]
   - repo: https://github.com/PyCQA/pydocstyle
     rev: 6.3.0
