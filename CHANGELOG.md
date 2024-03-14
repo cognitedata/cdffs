@@ -170,3 +170,17 @@ Changes are grouped as follows
 ### Fixed
 - Dependency updates for source code.
 - Updated Github actions to use the latest versions.
+
+## [0.3.4] - 2024-02-01
+
+### Fixed
+- Dependency updates for source code.
+- Added support for pydantic v1
+
+## [0.3.5] - 2024-02-01
+
+### Fixed
+- Dependency updates for source code.
+- Updated Github actions to use the latest versions of Code Cov.
+- Removed the multi-version support for pydantic.
+- Introduced vendoring for pydantic v1.
