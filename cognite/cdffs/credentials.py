@@ -6,15 +6,9 @@ from typing import Any, List, Optional, Union
 from cognite.client import ClientConfig, CogniteClient
 from cognite.client.credentials import OAuthClientCredentials, Token
 
-try:
-    from pydantic import BaseSettings, ConfigDict, SecretStr, validator
-
-    is_pydantic_v2 = False
-except ImportError:
-    from pydantic import ConfigDict, SecretStr, field_validator
-    from pydantic_settings import BaseSettings
-
-    is_pydantic_v2 = True
+from vendor.pydantic.class_validators import validator
+from vendor.pydantic.env_settings import BaseSettings
+from vendor.pydantic.types import SecretStr
 
 
 def validate_scopes(cls: Any, value: str) -> Optional[List]:
@@ -27,7 +21,14 @@ def validate_scopes(cls: Any, value: str) -> Optional[List]:
 class FsConfig(BaseSettings):
     """Base config to parse environment variables."""
 
-    model_config: ConfigDict = ConfigDict(env_nested_delimiter="__", env_file=".env", env_file_encoding="utf-8")
+    class Config:
+        """Global config for Base Settings."""
+
+        env_nested_delimiter = "__"
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+    # model_config: ConfigDict = ConfigDict(env_nested_delimiter="__", env_file=".env", env_file_encoding="utf-8")
 
 
 class FsCredentials(FsConfig, ABC):
@@ -79,10 +80,7 @@ class FsOAuthCredentials(FsCredentials, FsConfig):
     scopes: Optional[Union[str, List]] = None
 
     # Validator
-    if is_pydantic_v2:
-        _scopes = field_validator("scopes")(validate_scopes)
-    else:
-        _scopes = validator("scopes")(validate_scopes)
+    _scopes = validator("scopes")(validate_scopes)
 
     def get_credentials(self) -> OAuthClientCredentials:
         """Construct credentials based on environment variables.
@@ -122,23 +120,13 @@ class FsToken(FsCredentials, FsConfig):
 
 def get_connection_config(env_file: str) -> CogniteClient:
     """Construct Cognite Client from environment variables."""
-    credentials = FsOAuthCredentials(_env_file=env_file)
+    credentials = FsOAuthCredentials(_env_file=env_file)  # type:ignore
     connection_config = None
-
-    if is_pydantic_v2:
-        credentials_dump = credentials.model_dump().items()
-    else:
-        credentials_dump = credentials.dict().items()
-
-    if all(value is not None for _, value in credentials_dump):
+    if all(value is not None for _, value in credentials.dict().items()):
         connection_config = credentials.get_client_config()
     else:
-        token = FsToken(_env_file=env_file)
-        if is_pydantic_v2:
-            token_dump = token.model_dump().items()
-        else:
-            token_dump = token.dict().items()
-        if all(value is not None for _, value in token_dump):
+        token = FsToken(_env_file=env_file)  # type:ignore
+        if all(value is not None for _, value in token.dict().items()):
             connection_config = token.get_client_config()
 
     return connection_config
