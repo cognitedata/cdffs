@@ -78,9 +78,3 @@ tenacity = "^8.2.3"
 [build-system]
 requires = ["poetry>=0.12"]
 build-backend = "poetry.masonry.api"
-
-[[tool.mypy.overrides]]
-module = [
-    "vendor.pydantic.*",
-]
-ignore_errors = true
