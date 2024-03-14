@@ -50,5 +50,10 @@ Important steps to follow when working with CDF Files using the `fsspec` support
 
 Refer [cdffs.readthedocs.io](https://cdffs.readthedocs.io) for more details.
 
+## Vendoring
+
+`cdffs` uses pydandic.v1 package using vendoring. It was mainly introduced to overcome version conflicts
+related to the Cognite Notebooks.
+
 ## Contributing
 Want to contribute? Check out [CONTRIBUTING](CONTRIBUTING.md).
