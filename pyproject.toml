@@ -8,6 +8,7 @@ readme = "README.md"
 packages = [
     { include="cognite", from="." },
 ]
+
 [tool.poetry.group.test.dependencies]
 pandas = "^2.2.1"
 pyarrow = "^15.0.1"
