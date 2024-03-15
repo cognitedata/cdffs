@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip poetry==1.2.2
           poetry config virtualenvs.create false
-          poetry install --extras "settings"
+          poetry install
 
       - name: Linting
         run: |
