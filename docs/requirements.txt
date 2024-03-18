@@ -5,4 +5,4 @@ requests==2.31.0
 pydantic==2.6.3
 sphinx-rtd-theme==2.0.0
 tenacity==8.2.3
-pydantic_settings==2.1.0
+pydantic_settings==2.2.1
