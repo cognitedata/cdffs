@@ -2,7 +2,7 @@ toml==0.10.2
 fsspec==2024.2.0
 cognite-sdk==7.26.0
 requests==2.31.0
-pydantic==2.6.3
+pydantic==2.6.4
 sphinx-rtd-theme==2.0.0
 tenacity==8.2.3
 pydantic_settings==2.1.0
