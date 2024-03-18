@@ -9,13 +9,7 @@ the list of all supported/compatible python packages.
 
 Installation
 ^^^^^^^^^^^^
-To install this package(Recommended):
-
-  .. code-block:: bash
-
-   pip install cognite-cdffs[settings]
-
-If you need `cdffs` to be compatible with pydantic-v1, choose to install the expected pydantic-v1 (`^1.10.7`) and use,
+To install this package:
 
   .. code-block:: bash
 

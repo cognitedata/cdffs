@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip poetry==1.2.2
-          poetry install --extras "settings"
+          poetry install
 
       - name: Linting
         run: |
@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip poetry==1.2.2
-          poetry install --extras "settings"
+          poetry install
 
       - name: Run tests
         env:
