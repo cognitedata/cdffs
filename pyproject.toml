@@ -1,17 +1,17 @@
 [tool.poetry]
 name = "cognite-cdffs"
-version = "0.3.5"
+version = "0.3.6"
 description = "File System Interface for CDF Files"
 license = "Apache-2.0"
 authors = ["Infant Alex <infant.alex@cognite.com>"]
 readme = "README.md"
 packages = [
-    { include="cognite", from="." },
+    { include="cognite", from="." },{ include="vendor", from="." }
 ]
 
 [tool.poetry.group.test.dependencies]
 pandas = "^2.2.1"
-pyarrow = "^15.0.1"
+pyarrow = "^15.0.2"
 zarr = "^2.17.1"
 dask = {version = "^2024.3.1", extras = ["dataframe"]}
 xarray = "^2024.2.0"
@@ -20,11 +20,11 @@ geopandas = "^0.14.3"
 
 [tool.poetry.group.dev.dependencies]
 types-requests = "^2.31.0.20240218"
-pytest-cov = "^4.1.0"
-black = "^24.2.0"
+pytest-cov = "^5.0.0"
+black = "^24.3.0"
 responses = "^0.25.0"
 flake8 = "^7.0.0"
-pre-commit = "^3.6.2"
+pre-commit = "^3.7.0"
 flake8-pyproject = "^1.2.3"
 toml = "^0.10.2"
 sphinx-rtd-theme = "^2.0.0"
@@ -68,8 +68,8 @@ commands =
 
 [tool.poetry.dependencies]
 python = ">=3.9.10,<3.13"
-cognite-sdk = "^7.28.2"
-fsspec = "^2024.2.0"
+cognite-sdk = "^7.32.0"
+fsspec = "^2024.3.1"
 requests = "^2.31.0"
 twine = "^5.0.0"
 python-dotenv = "^1.0.1"

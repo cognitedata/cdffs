@@ -184,3 +184,9 @@ Changes are grouped as follows
 - Updated Github actions to use the latest versions of Code Cov.
 - Removed the multi-version support for pydantic.
 - Introduced vendoring for pydantic v1.
+
+## [0.3.6] - 2024-03-25
+
+### Fixed
+- Dependency updates for source code.
+- Included vendor directory as package to be included in the final distribution.
