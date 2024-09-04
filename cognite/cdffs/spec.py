@@ -513,7 +513,6 @@ class CdfFileSystem(AbstractFileSystem):
         if isinstance(kwargs.get("file_metadata"), FileMetadata):
             file_metadata: FileMetadata = kwargs.get("file_metadata")
             root_dir, _, external_id = self.split_path(path, directory_prefix=file_metadata.directory)
-            print(root_dir, _, external_id)
         else:
             root_dir, _, external_id = self.split_path(path)
 
