@@ -148,13 +148,13 @@ class CdfFileSystem(AbstractFileSystem):
         """
         return [file_part for file_part in path.split("/") if Path(file_part).suffix]
 
-    def split_path(self, path: str, validate_suffix: bool = True, directory: str = "") -> Tuple[str, str, str]:
+    def split_path(self, path: str, validate_suffix: bool = True, directory_prefix: str = "") -> Tuple[str, str, str]:
         """Split the path and extract root_dir, external_id and a filename.
 
         Args:
             path (str): Path to split.
             validate_suffix (bool): Flag to validate if the file name must have a valid suffix.
-            directory(str): Directory
+            directory_prefix(str): Directory prefix.
 
         Returns:
             Tuple: Returns a tuple with root_dir, external_id_prefix and external_id.
@@ -162,8 +162,8 @@ class CdfFileSystem(AbstractFileSystem):
         Raises:
             ValueError: When an invalid input path is given.
         """
-        if directory or self.file_metadata.directory:
-            root_dir = directory.strip("/") if directory else self.file_metadata.directory.strip("/")
+        if directory_prefix or self.file_metadata.directory:
+            root_dir = directory_prefix.strip("/") if directory_prefix else self.file_metadata.directory.strip("/")
             external_id = path.replace(root_dir, "").lstrip("/")
             external_id_prefix = Path(external_id).parts[0]
 
@@ -509,7 +509,7 @@ class CdfFileSystem(AbstractFileSystem):
         """
         if isinstance(kwargs.get("file_metadata"), FileMetadata):
             file_metadata: FileMetadata = kwargs.get("file_metadata")
-            root_dir, _, external_id = self.split_path(path, directory=file_metadata.directory)
+            root_dir, _, external_id = self.split_path(path, directory_prefix=file_metadata.directory)
         else:
             root_dir, _, external_id = self.split_path(path)
 
