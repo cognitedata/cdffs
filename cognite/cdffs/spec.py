@@ -164,7 +164,10 @@ class CdfFileSystem(AbstractFileSystem):
         """
         if directory_prefix or self.file_metadata.directory:
             root_dir = directory_prefix.strip("/") if directory_prefix else self.file_metadata.directory.strip("/")
-            external_id = path.replace(root_dir, "").lstrip("/")
+            if root_dir in path:
+                external_id = path.replace(root_dir, "").lstrip("/")
+            else:
+                external_id = path.split("/")[-1]
             external_id_prefix = Path(external_id).parts[0]
 
         elif self._suffix_exists(path):
@@ -510,6 +513,7 @@ class CdfFileSystem(AbstractFileSystem):
         if isinstance(kwargs.get("file_metadata"), FileMetadata):
             file_metadata: FileMetadata = kwargs.get("file_metadata")
             root_dir, _, external_id = self.split_path(path, directory_prefix=file_metadata.directory)
+            print(root_dir, _, external_id)
         else:
             root_dir, _, external_id = self.split_path(path)
 
