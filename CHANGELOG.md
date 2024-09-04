@@ -190,3 +190,9 @@ Changes are grouped as follows
 ### Fixed
 - Dependency updates for source code.
 - Included vendor directory as package to be included in the final distribution.
+
+## [0.3.7] - 2024-09-04
+
+### Fixed
+- Dependency updates for source code.
+- Updated to use directory names from file metadata.
