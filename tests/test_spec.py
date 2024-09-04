@@ -576,7 +576,7 @@ def test_open_write(filesystem, test_path, test_mode, test_data, expected_len):
     with filesystem.open(test_path, mode=test_mode, file_metadata=FileMetadata(metadata={}), block_size=5) as cdf_file:
         test_len = cdf_file.write(test_data.encode("utf-8"))
 
-    assert test_len == expected_len
+        assert test_len == expected_len
 
 
 @pytest.mark.parametrize(
@@ -924,3 +924,43 @@ def test_open_read_exception_with_retry(test_path, test_out_length):
     with pytest.raises(FileNotFoundError):
         cdf_file = fs.open(test_path, mode="rb")
         cdf_file.read(length=test_out_length)
+
+
+@pytest.mark.parametrize(
+    "filesystem, test_path, test_mode, test_data, expected_len, mock_files_upload_response",
+    [
+        (
+            "fs",
+            "/sample_data/out/sample/df.csv",
+            "wb",
+            ",A,B\n0,1,2\n1,4,5\n",
+            17,
+            "successful",
+        ),
+        (
+            "az_fs",
+            "/sample_data/out/sample/df.csv",
+            "wb",
+            ",A,B\n0,1,2\n1,4,5\n",
+            17,
+            "successful",
+        ),
+        (
+            "gcp_fs",
+            "/sample_data/out/sample/df.csv",
+            "wb",
+            ",A,B\n0,1,2\n1,4,5\n",
+            17,
+            "successful",
+        ),
+    ],
+    indirect=["filesystem", "mock_files_upload_response"],
+)
+@pytest.mark.usefixtures("mock_files_upload_response")
+def test_open_write_with_metadata(filesystem, test_path, test_mode, test_data, expected_len):
+    with filesystem.open(
+        test_path, mode=test_mode, file_metadata=FileMetadata(directory="/data01/", metadata={}), block_size=5
+    ) as cdf_file:
+        test_len = cdf_file.write(test_data.encode("utf-8"))
+        assert cdf_file.file_metadata.directory == "/data01/"
+        assert test_len == expected_len
