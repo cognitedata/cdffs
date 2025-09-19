@@ -35,8 +35,8 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           TENANT_ID: af0de822-c5ca-472a-bc6f-93d20bda36a5
-          COGNITE_PROJECT: alex-playground
-          CDF_CLUSTER: greenfield
+          COGNITE_PROJECT: alex-playground-az
+          CDF_CLUSTER: bluefield
         run: |
           poetry run pytest tests/ -v --cov-report xml:coverage.xml --cov
           poetry run coverage xml
