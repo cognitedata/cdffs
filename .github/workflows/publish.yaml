@@ -34,9 +34,9 @@ jobs:
           environment: main
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          TENANT_ID: 755f6e58-74f0-4a07-a599-f7479b9669ab
-          COGNITE_PROJECT: oceandata-dev
-          CDF_CLUSTER: westeurope-1
+          TENANT_ID: af0de822-c5ca-472a-bc6f-93d20bda36a5
+          COGNITE_PROJECT: alex-playground-az
+          CDF_CLUSTER: bluefield
         run: |
           poetry run pytest tests/ -v --cov-report xml:coverage.xml --cov
           poetry run coverage xml

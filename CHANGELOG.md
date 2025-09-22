@@ -196,3 +196,10 @@ Changes are grouped as follows
 ### Fixed
 - Dependency updates for source code.
 - Updated to use directory names from file metadata.
+
+
+## [0.3.8] - 2025-09-19
+
+### Fixed
+- Dependency updates for source code.
+- CVE fixes.
