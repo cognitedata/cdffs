@@ -697,13 +697,13 @@ tqdm = ["tqdm"]
 
 [[package]]
 name = "geodatasets"
-version = "2023.12.0"
+version = "2024.8.0"
 description = "Spatial data examples"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "geodatasets-2023.12.0-py3-none-any.whl", hash = "sha256:6abf6dc2b5ec930465b19c33a1ba4211bf8aebbd544495ae9a5e81d9ca3ca294"},
-    {file = "geodatasets-2023.12.0.tar.gz", hash = "sha256:8867fa6966aeae3fe854697c9fb7d429666ae7ae8edda9b77c87c8e616ba6c65"},
+    {file = "geodatasets-2024.8.0-py3-none-any.whl", hash = "sha256:fd2a91618277553dbb180496bb952d496e4bc99e8c0066c5dc06701d66d53540"},
+    {file = "geodatasets-2024.8.0.tar.gz", hash = "sha256:ea1b0f885f1b3305d4a308b2ddee042e425c5288b5ff6b00e6b0ac74a4d5e8d9"},
 ]
 
 [package.dependencies]
@@ -2447,4 +2447,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9.10,<3.13"
-content-hash = "9bdb85b16223aaa8ddeac29f3ca8a6f2ec482d9d51caf530207392f5247f2489"
+content-hash = "0fedf4da7917ba331c55715d00bc6d694f9e5abaeed1e3b7abdc18b02b90612c"
