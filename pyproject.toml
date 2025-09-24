@@ -67,7 +67,7 @@ commands =
 """
 
 [tool.poetry.dependencies]
-python = ">=3.9.10,<3.13"
+python = ">=3.13.7,<3.14"
 cognite-sdk = "^7.32.0"
 fsspec = "^2024.3.1"
 requests = "^2.31.0"
