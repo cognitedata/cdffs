@@ -63,7 +63,9 @@ class CdfFileSystem(AbstractFileSystem):
     def __init__(
         self,
         connection_config: Optional[ClientConfig] = None,
-        file_metadata: FileMetadata = FileMetadata(metadata={}),
+        file_metadata: FileMetadata = FileMetadata(
+            id=1, uploaded=False, created_time=0, last_updated_time=0, name="", metadata={}
+        ),
         upload_strategy: str = "inmemory",
         **kwargs: Optional[Any],
     ) -> None:
