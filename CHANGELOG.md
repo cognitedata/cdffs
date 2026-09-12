@@ -203,3 +203,10 @@ Changes are grouped as follows
 ### Fixed
 - Dependency updates for source code.
 - CVE fixes.
+
+
+## [0.3.9] - 2026-04-20
+
+### Fixed
+- Dependency updates for source code.
+- CVE fixes.

@@ -22,9 +22,8 @@ def mock_unset_env():
         yield
 
 
-@pytest.mark.usefixtures("mock_cognite_client")
 @pytest.fixture(scope="function")
-def fs():
+def fs(mock_cognite_client):
     inp = {
         "connection_config": ClientConfig(
             client_name="foobar",
@@ -37,9 +36,8 @@ def fs():
     return fs
 
 
-@pytest.mark.usefixtures("mock_cognite_client")
 @pytest.fixture(scope="function")
-def az_fs():
+def az_fs(mock_cognite_client):
     inp = {
         "connection_config": ClientConfig(
             client_name="foobar",
@@ -53,9 +51,8 @@ def az_fs():
     return fs
 
 
-@pytest.mark.usefixtures("mock_cognite_client")
 @pytest.fixture(scope="function")
-def gcp_fs():
+def gcp_fs(mock_cognite_client):
     inp = {
         "connection_config": ClientConfig(
             client_name="foobar",
